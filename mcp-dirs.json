@@ -1,0 +1,18 @@
+{
+  "_comment": "自定义 MCP 扫描来源（类似 skill-dirs.json，可在网页 UI 编辑）。删掉本文件=用内置默认；把某键设为 [] = 关闭该来源（例如 \"scriptDirs\": [] 就不再扫 ~/.claude/mcp）。路径支持 ~。键：projectRoots（<root>/<proj>/mcps/<server>/）· descriptorDirs（扁平 <dir>/<server>/）· configFiles（mcp.json / .mcp.json）· scanDirs（递归找项目级 mcp.json）· scriptDirs（自定义 MCP 脚本目录）· pluginRoots（Cursor 插件缓存）。",
+  "projectRoots": [
+    "~/.cursor/projects"
+  ],
+  "descriptorDirs": [],
+  "configFiles": [
+    "~/.cursor/mcp.json",
+    "~/.claude/.mcp.json"
+  ],
+  "scanDirs": [],
+  "scriptDirs": [
+    "~/.claude/mcp"
+  ],
+  "pluginRoots": [
+    "~/.cursor/plugins/cache"
+  ]
+}

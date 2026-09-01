@@ -1,0 +1,2601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Skill & MCP Manager · by amize</title>
+<meta name="author" content="amize">
+<meta name="description" content="Skill & MCP Manager — built by amize. Index, search, conflict-detect AI Agent Skills and MCP servers.">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0d0f;color:#e1e1e3;display:flex;flex-direction:column}
+
+/* ── Layout ── */
+.app{display:flex;flex:1;min-height:0;overflow:hidden}
+.sidebar{width:240px;flex-shrink:0;background:#111114;border-right:1px solid #222;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.sidebar .mode-switcher{flex-shrink:0}
+.sidebar .sidebar-header{flex-shrink:0}
+.sidebar .mode-panel{display:none;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden}
+.sidebar .mode-panel.active{display:flex}
+.sidebar-scroll{flex:1 1 0;overflow-y:auto;overflow-x:hidden;padding:4px 0 12px;min-height:0;overscroll-behavior:contain}
+.sidebar-scroll::-webkit-scrollbar{width:8px}
+.sidebar-scroll::-webkit-scrollbar-track{background:#0d0d0f}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:#2a2a30;border-radius:4px}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover{background:#3a3a45}
+.main{flex:1;overflow-y:auto;padding:28px 32px;min-height:0;overscroll-behavior:contain}
+
+/* ── Mode Switcher (top of sidebar) ── */
+.mode-switcher{display:flex;padding:10px 12px;gap:4px;border-bottom:1px solid #1a1a1e}
+.mode-btn{flex:1;padding:7px 0;font-size:11px;font-weight:700;text-align:center;border:1px solid #252528;border-radius:6px;background:transparent;color:#555;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
+.mode-btn:hover{color:#888;border-color:#444}
+.mode-btn.active{background:#7b6fff22;border-color:#7b6fff;color:#a89eff}
+
+/* ── Sidebar ── */
+.sidebar-header{padding:10px 16px;font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #1a1a1e;flex-shrink:0}
+.sidebar-section{padding:4px 0 6px}
+.sidebar-section-header{display:flex;align-items:center;gap:6px;padding:6px 14px 4px;cursor:pointer;user-select:none;transition:background .12s}
+.sidebar-section-header:hover{background:#18181c}
+.sidebar-caret{font-size:9px;color:#555;transition:transform .15s;display:inline-block;width:8px}
+.sidebar-section.collapsed .sidebar-caret{transform:rotate(-90deg)}
+.sidebar-label{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.06em;font-weight:700;flex:1}
+.sidebar-count{font-size:10px;color:#444;font-weight:600;background:#161618;padding:1px 6px;border-radius:8px}
+.sidebar-section-body{transition:max-height .2s ease}
+.sidebar-section.collapsed .sidebar-section-body{display:none}
+.sidebar-item{display:flex;align-items:center;gap:8px;padding:5px 16px 5px 24px;font-size:12.5px;color:#888;cursor:pointer;transition:all .15s;user-select:none}
+.sidebar-item:hover{background:#18181c;color:#ccc}
+.sidebar-item .dot{width:6px;height:6px;border-radius:50%;background:#333;flex-shrink:0}
+.sidebar-item .dot.green{background:#4acf7a}
+.sidebar-item .dot.blue{background:#4a9eff}
+.sidebar-item .dot.purple{background:#cf7adb}
+
+/* ── View toggle (source / category) ── */
+.view-toggle{display:flex;padding:6px 12px 2px;gap:3px}
+.view-toggle-btn{flex:1;padding:4px 0;font-size:10px;font-weight:600;text-align:center;border:1px solid #222;border-radius:5px;background:transparent;color:#555;cursor:pointer;transition:all .12s;letter-spacing:.04em}
+.view-toggle-btn:hover{color:#888;border-color:#444}
+.view-toggle-btn.active{background:#2a2a3a;border-color:#7b6fff88;color:#a89eff}
+
+/* ── Category icons ── */
+.cat-icon{font-size:11px;flex-shrink:0;width:16px;text-align:center}
+
+/* ── Page header ── */
+.page-header{margin-bottom:20px}
+.page-header h1{font-size:22px;font-weight:700;color:#f0f0f2;margin-bottom:6px}
+.page-header p{font-size:13px;color:#666;line-height:1.5}
+.page-header p span{color:#888}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid #1d1d22;padding-bottom:0}
+.tab-btn{padding:9px 18px;font-size:13px;font-weight:500;color:#666;cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s;border-radius:4px 4px 0 0}
+.tab-btn:hover{color:#aaa;background:#111114}
+.tab-btn.active{color:#a89eff;border-bottom-color:#7b6fff;background:#111114}
+.tab-badge{display:inline-block;margin-left:6px;font-size:10px;padding:1px 6px;border-radius:8px;background:#222;color:#666;font-weight:600;vertical-align:middle}
+.tab-btn.active .tab-badge{background:#2a2840;color:#9d8fff}
+.tab-badge.danger{background:#3a1a14;color:#ff7055}
+
+/* ── Tab panels ── */
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ── Pipeline ── */
+.pipeline-section{background:#111114;border:1px solid #1d1d22;border-radius:12px;padding:22px 24px;margin-bottom:28px}
+.pipeline-title{font-size:13px;font-weight:600;color:#888;margin-bottom:16px;text-transform:uppercase;letter-spacing:.06em}
+.pipeline-track{display:flex;align-items:center;overflow-x:auto;padding-bottom:4px}
+.pipeline-step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:110px}
+.pipeline-box{background:#161619;border:1px solid #252528;border-radius:8px;padding:10px 14px;text-align:center;min-width:100px;transition:border-color .2s}
+.pipeline-box:hover{border-color:#7b6fff55}
+.pipeline-box .box-title{font-size:12px;font-weight:600;color:#ccc;margin-bottom:3px}
+.pipeline-box .box-sub{font-size:10px;color:#555}
+.pipeline-box.highlight{border-color:#7b6fff;background:#1a1828}
+.pipeline-box.highlight .box-title{color:#a89eff}
+.pipeline-arrow{color:#333;font-size:18px;padding:0 4px;flex-shrink:0;line-height:1;margin-top:-18px}
+
+/* ── Search mode toggle ── */
+.search-mode-toggle{display:flex;border:1px solid #2a2a30;border-radius:8px;overflow:hidden;flex-shrink:0}
+.search-mode-btn{padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:#555;transition:all .15s}
+.search-mode-btn:hover{color:#888}
+.search-mode-btn.active-kw{background:#1a2520;color:#4acf7a;border-right:1px solid #2a2a30}
+.search-mode-btn.active-ai{background:#1a1828;color:#a89eff;border-left:1px solid #2a2a30}
+.ai-reason{font-size:11px;color:#70c080;background:#0f1a0f;border:1px solid #1e2e1e;border-radius:5px;padding:5px 9px;margin-top:6px;line-height:1.4}
+.ai-reason::before{content:"AI: ";font-weight:700;color:#5aaa6a}
+.fallback-banner{padding:12px 16px;border-radius:8px;margin-bottom:14px;font-size:12.5px;line-height:1.55;display:flex;gap:10px;align-items:flex-start}
+.fallback-banner .icon{font-size:18px;line-height:1;flex-shrink:0}
+.fallback-banner.quota{background:#2a1a0d;border:1px solid #5a3a1a;color:#ffb070}
+.fallback-banner.auth{background:#2a1418;border:1px solid #5a2030;color:#ff8090}
+.fallback-banner.ratelimit{background:#2a2418;border:1px solid #5a4830;color:#f0c060}
+.fallback-banner.timeout{background:#1a1a2a;border:1px solid #2a2a5a;color:#a0a0ff}
+.fallback-banner.cli-missing{background:#2a1418;border:1px solid #5a2030;color:#ff8090}
+.fallback-banner.error{background:#1a1a1c;border:1px solid #333;color:#aaa}
+.fallback-banner strong{color:#fff;font-weight:700;display:block;margin-bottom:3px}
+.fallback-banner code{background:rgba(0,0,0,.3);padding:1px 6px;border-radius:3px;font-size:11px;font-family:ui-monospace,Consolas,monospace;color:#ccc}
+.ai-status-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;margin-bottom:16px;border-radius:8px;font-size:11.5px}
+.ai-status-bar.ok{background:#0f1a0f;border:1px solid #1e2e1e;color:#70c080}
+.ai-status-bar.err{background:#1a0f0f;border:1px solid #2e1e1e;color:#ff7055}
+.ai-status-bar.loading{background:#111114;border:1px solid #1d1d22;color:#888}
+.ai-latency{font-size:10px;color:#555;margin-left:auto}
+.pipeline-box.active{border-color:#4acf7a;background:#0f1a14}
+.pipeline-box.active .box-title{color:#4acf7a}
+
+/* ── Demo section ── */
+.demo-section{background:#111114;border:1px solid #1d1d22;border-radius:12px;padding:22px 24px}
+.section-title{font-size:13px;font-weight:600;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.section-sub{font-size:12px;color:#555;margin-bottom:16px}
+
+/* ── Search ── */
+.search-wrap{display:flex;gap:10px;margin-bottom:20px}
+.search-input{flex:1;background:#0d0d0f;border:1px solid #2a2a30;border-radius:8px;padding:10px 14px;font-size:13.5px;color:#e1e1e3;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:#7b6fff88}
+.search-input::placeholder{color:#444}
+.search-btn{background:#7b6fff;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap}
+.search-btn:hover{background:#6a5de8}
+
+/* ── Example chips ── */
+.examples{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.example-chip{font-size:11.5px;padding:5px 12px;border:1px solid #222;border-radius:20px;color:#666;cursor:pointer;transition:all .15s;background:#111114}
+.example-chip:hover{border-color:#7b6fff66;color:#aaa;background:#16161b}
+
+/* ── Results ── */
+.results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.results-count{font-size:12px;color:#555}
+.results-count span{color:#9d8fff;font-weight:600}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+
+/* ── Skill card ── */
+.skill-card{background:#0d0d0f;border:1px solid #1e1e23;border-radius:10px;padding:14px 16px;transition:all .2s;cursor:pointer}
+.skill-card:hover{border-color:#7b6fff55;background:#101018;transform:translateY(-1px)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.card-name{font-size:13px;font-weight:600;color:#d0d0d8;line-height:1.3}
+.card-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap;margin-left:8px;flex-shrink:0}
+.badge-cursor-builtin{background:#1a2535;color:#4a9eff}
+.badge-cursor-skills{background:#1a2520;color:#4acf7a}
+.badge-claude-skills{background:#2a1a2a;color:#cf7adb}
+.badge-gemini-projects{background:#1a2a1a;color:#e0b040}
+.card-desc{font-size:11.5px;color:#666;line-height:1.5;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-triggers{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.trigger-tag{font-size:10px;padding:2px 7px;background:#161618;border:1px solid #252528;border-radius:4px;color:#777}
+.card-score-bar{height:3px;background:#1a1a1e;border-radius:2px;overflow:hidden}
+.card-score-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#7b6fff,#a89eff);transition:width .4s}
+.card-score-label{font-size:10px;color:#555;margin-top:5px}
+.card-score-label span{color:#9d8fff}
+
+/* ── Stats bar ── */
+.stats-bar{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.stat-chip{font-size:11px;padding:4px 10px;background:#111114;border:1px solid #1e1e23;border-radius:6px;color:#666}
+.stat-chip span{color:#9d8fff;font-weight:600}
+
+/* ── Conflicts tab ── */
+.conflicts-toolbar{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;background:#0f0f12;border:1px solid #1d1d22;border-radius:10px;padding:14px 16px}
+.filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.filter-label{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;min-width:60px}
+.filter-chip{display:inline-flex;align-items:center;gap:6px;background:#161618;border:1px solid #2a2a30;border-radius:6px;padding:5px 11px;font-size:11.5px;color:#999;cursor:pointer;transition:all .15s;user-select:none}
+.filter-chip:hover{border-color:#444;color:#ccc}
+.filter-chip input{accent-color:#7b6fff;width:13px;height:13px;cursor:pointer;margin:0}
+.filter-chip:has(input:checked){background:#1a1828;border-color:#7b6fff55;color:#cdc6ff}
+.filter-chip.sev-high:has(input:checked){background:#2a1410;border-color:#ff6b4a55;color:#ff9080}
+.filter-chip.sev-med:has(input:checked){background:#2a1f0a;border-color:#f0a04055;color:#f0c080}
+.filter-chip.sev-low:has(input:checked){background:#1a1828;border-color:#7b6fff55;color:#a89eff}
+.conflicts-toolbar select{background:#161618;border:1px solid #2a2a30;border-radius:6px;color:#ccc;padding:5px 10px;font-size:12px;outline:none;cursor:pointer}
+.filter-btn{background:#161618;border:1px solid #2a2a30;color:#ccc;border-radius:6px;padding:5px 11px;font-size:11.5px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.filter-btn:hover{border-color:#444}
+.btn-refresh{background:#7b6fff22;border:1px solid #7b6fff55;color:#9d8fff;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;transition:all .15s;margin-left:auto}
+.btn-refresh:hover{background:#7b6fff44}
+.conflict-summary{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.conflict-stat{background:#111114;border:1px solid #1d1d22;border-radius:8px;padding:12px 16px;min-width:100px;text-align:center}
+.conflict-stat .num{font-size:24px;font-weight:700;margin-bottom:4px}
+.conflict-stat .lbl{font-size:11px;color:#555}
+.num-high{color:#ff6b4a}
+.num-med{color:#f0a040}
+.num-low{color:#7b6fff}
+.conflict-list{display:flex;flex-direction:column;gap:12px}
+.conflict-card{background:#111114;border:1px solid #1d1d22;border-radius:10px;padding:16px 18px;transition:border-color .2s}
+.conflict-card:hover{border-color:#333}
+.conflict-card.high{border-left:3px solid #ff6b4a}
+.conflict-card.medium{border-left:3px solid #f0a040}
+.conflict-card.low{border-left:3px solid #7b6fff}
+.conflict-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.conflict-skills{display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap}
+.conflict-skill-name{font-size:13px;font-weight:600;color:#d0d0d8;background:#161618;border:1px solid #252528;border-radius:6px;padding:3px 10px}
+.conflict-vs{font-size:11px;color:#444;font-weight:600}
+.conflict-sim{font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;margin-left:auto}
+.sim-high{background:#3a1a14;color:#ff7055}
+.sim-med{background:#2a1f0a;color:#f0a040}
+.sim-low{background:#1a1828;color:#9d8fff}
+.conflict-body{display:flex;flex-direction:column;gap:8px}
+.conflict-overlap{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.conflict-overlap-label{font-size:11px;color:#555;margin-right:4px;flex-shrink:0}
+.overlap-tag{font-size:10.5px;padding:2px 8px;background:#1e1518;border:1px solid #3a2a28;border-radius:4px;color:#ff9980}
+.conflict-fix{background:#0f1a0f;border:1px solid #1e2e1e;border-radius:6px;padding:8px 12px;font-size:11.5px;color:#70c080;line-height:1.5}
+.conflict-fix::before{content:"Fix: ";font-weight:700;color:#5aaa6a}
+.conflict-files{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 4px}
+.conflict-file{background:#0d0d10;border:1px solid #1d1d22;border-radius:8px;padding:10px 12px;font-size:11px;color:#888;min-width:0}
+.conflict-file.newer{border-color:#2a4a2a;background:#0f1a0f}
+.conflict-file-head{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.conflict-file-name{font-weight:600;color:#ddd;font-size:12px}
+.conflict-file-newer-tag{background:#2a4a2a;color:#7aff8a;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;text-transform:uppercase}
+.conflict-file-older-tag{background:#3a2a1a;color:#f0a040;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;text-transform:uppercase}
+.conflict-file-path{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:#666;word-break:break-all;line-height:1.4;padding:4px 6px;background:#0a0a0c;border-radius:4px;margin-bottom:4px}
+.conflict-file-meta{font-size:10px;color:#555;display:flex;gap:10px;flex-wrap:wrap}
+.conflict-actions{display:flex;gap:8px;margin-top:8px}
+.btn-compare{background:#7b6fff22;border:1px solid #7b6fff55;color:#a89eff;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-compare:hover{background:#7b6fff44}
+.btn-open{background:transparent;border:1px solid #2a2a30;color:#888;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;transition:all .15s}
+.btn-open:hover{border-color:#444;color:#ccc}
+
+/* ── Compare modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;padding:30px}
+.modal-backdrop.active{display:flex}
+.modal{background:#0d0d10;border:1px solid #2a2a30;border-radius:12px;width:100%;max-width:1400px;height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal-header{padding:16px 24px;border-bottom:1px solid #1d1d22;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:600;color:#e1e1e3;flex:1}
+.modal-close{background:transparent;border:1px solid #2a2a30;color:#888;width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.modal-close:hover{border-color:#ff5555;color:#ff5555}
+.modal-body{flex:1;overflow:hidden;display:flex;flex-direction:column;background:#0d0d10;min-height:0}
+.diff-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#1d1d22;min-height:0;overflow:hidden}
+.diff-pane{background:#0d0d10;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.diff-pane-header{padding:10px 16px;background:#111114;border-bottom:1px solid #1d1d22;flex-shrink:0}
+.diff-pane-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#ccc;margin-bottom:4px}
+.diff-pane-path{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:#666;word-break:break-all;line-height:1.4}
+.diff-pane-meta{display:flex;gap:10px;font-size:10px;color:#555;margin-top:4px}
+.diff-pane-actions{display:flex;gap:6px;margin-top:8px}
+.btn-delete-skill{background:#2a1414;border:1px solid #5a2020;color:#ff8080;border-radius:5px;padding:4px 10px;font-size:10.5px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-delete-skill:hover{background:#3a1818;border-color:#8a3030;color:#ff9090}
+.btn-delete-skill:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Confirm dialog ── */
+.confirm-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.confirm-backdrop.active{display:flex}
+.confirm-dialog{background:#161618;border:1px solid #3a1818;border-radius:10px;width:100%;max-width:520px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.confirm-header{padding:14px 20px;background:#2a1414;border-bottom:1px solid #5a2020;font-size:14px;font-weight:700;color:#ff9080;display:flex;align-items:center;gap:8px}
+.confirm-body{padding:18px 20px;color:#d0d0d8;font-size:13px;line-height:1.6}
+.confirm-body code{display:block;background:#0d0d10;border:1px solid #2a2a30;border-radius:5px;padding:8px 12px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#aaa;word-break:break-all;margin:8px 0}
+.confirm-warning{margin-top:12px;color:#ff8060;font-size:12px;font-weight:600;display:flex;gap:6px;align-items:center}
+.confirm-input{width:100%;background:#0d0d10;border:1px solid #2a2a30;border-radius:5px;padding:8px 12px;font-size:13px;color:#e1e1e3;font-family:ui-monospace,Consolas,monospace;margin-top:8px;outline:none}
+.confirm-input:focus{border-color:#5a2030}
+.confirm-actions{padding:14px 20px;background:#0d0d10;border-top:1px solid #1d1d22;display:flex;gap:10px;justify-content:flex-end}
+.btn-cancel{background:transparent;border:1px solid #2a2a30;color:#aaa;border-radius:6px;padding:7px 16px;font-size:12.5px;cursor:pointer;transition:all .15s}
+.btn-cancel:hover{border-color:#444;color:#fff}
+.btn-confirm-delete{background:#7a1414;border:1px solid #a02020;color:#fff;border-radius:6px;padding:7px 16px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-confirm-delete:hover:not(:disabled){background:#9a1818}
+.btn-confirm-delete:disabled{opacity:.4;cursor:not-allowed}
+.insp-status{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:8px;font-size:13px}
+.insp-status.loading{background:#161a24;border:1px solid #2a3550;color:#80a0d0}
+.insp-status.ready{background:#0f1a14;border:1px solid #1e3e1e;color:#7aff8a}
+.insp-status.err{background:#1a0f0f;border:1px solid #3e1e1e;color:#ff7070}
+.insp-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.insp-row label{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em;font-weight:700;min-width:80px}
+.insp-row .value{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#bbb;word-break:break-all;flex:1;min-width:0}
+.insp-url{background:#0d2818;border:1px solid #3fb95a;border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.insp-url-text{font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#7aff8a;flex:1;word-break:break-all;font-weight:600}
+.insp-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-open-url{background:#3fb95a;border:none;color:#0d0d10;border-radius:6px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;transition:filter .15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.btn-open-url:hover{filter:brightness(1.15)}
+.btn-stop{background:#7a1414;border:1px solid #a02020;color:#fff;border-radius:6px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-stop:hover{background:#9a1818}
+.insp-logs{background:#0a0a0c;border:1px solid #1d1d22;border-radius:6px;padding:10px 14px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#999;line-height:1.55;white-space:pre-wrap;word-break:break-all;max-height:240px;overflow:auto}
+.insp-logs-header{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.insp-cmd{background:#0f0f12;border:1px solid #1d1d22;border-radius:6px;padding:8px 12px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#bbb;word-break:break-all}
+.toast{position:fixed;top:20px;right:20px;background:#1a2a14;border:1px solid #2e4e1e;color:#80ff80;padding:10px 16px;border-radius:8px;font-size:13px;z-index:300;animation:slideIn .25s ease;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.toast.error{background:#2a1414;border-color:#5a2020;color:#ff8080}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+.diff-pane-body{flex:1;overflow:auto;padding:14px 16px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-all;color:#bbb}
+.diff-line{padding:1px 6px;border-radius:2px;display:block;min-height:1.55em;border-left:3px solid transparent}
+.diff-line.add{background:#0d2818;color:#a8ffb8;border-left-color:#3fb95a}
+.diff-line.del{background:#28110d;color:#ffa8a8;border-left-color:#b94040}
+.diff-line.same{color:#666}
+.diff-line.empty{background:#0a0a0c;color:#333}
+.diff-legend{display:flex;gap:14px;align-items:center;font-size:11px;color:#888;margin-right:14px}
+.diff-legend-item{display:flex;align-items:center;gap:6px}
+.diff-legend-swatch{width:14px;height:14px;border-radius:3px;border-left:3px solid}
+.diff-legend-swatch.add{background:#0d2818;border-left-color:#3fb95a}
+.diff-legend-swatch.del{background:#28110d;border-left-color:#b94040}
+.diff-summary-banner{padding:10px 16px;background:#161618;border-bottom:1px solid #1d1d22;font-size:12px;color:#aaa;flex-shrink:0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.diff-summary-banner.identical{background:#0f1a14;color:#8acf9a;border-bottom-color:#1e2e1e}
+.diff-summary-banner strong{color:#e1e1e3}
+.diff-summary-banner.identical strong{color:#7aff8a}
+/* ── Skill view chooser ── */
+.chooser-dialog{background:#0d0d12;border:1px solid #26262e;border-radius:14px;width:100%;max-width:480px;box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden}
+.chooser-head{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid #1d1d24}
+.chooser-title{flex:1;font-size:15px;font-weight:650;color:#e6e6ea}
+.chooser-options{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.chooser-opt{display:flex;align-items:center;gap:14px;text-align:left;background:#121219;border:1px solid #26262e;border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;font-family:inherit}
+.chooser-opt:hover{border-color:#7b6fff88;background:#16162200;background:#161622;transform:translateY(-1px)}
+.chooser-opt-icon{font-size:24px;flex-shrink:0}
+.chooser-opt-name{font-size:14px;font-weight:600;color:#e6e6ea;margin-bottom:2px}
+.chooser-opt-desc{font-size:12px;color:#888}
+/* ── Skill visualization waiting ── */
+.viz-wait{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;height:78vh;color:#cfcfd4;text-align:center;padding:30px}
+.viz-wait .icon{font-size:42px}
+.viz-wait-title{font-size:16px;font-weight:600;color:#e6e6ea}
+.viz-wait-sub{font-size:13px;color:#999;max-width:480px;line-height:1.6}
+.viz-wait-bar{width:260px;height:6px;background:#1a1a22;border-radius:3px;overflow:hidden}
+.viz-wait-bar-fill{height:100%;width:35%;background:linear-gradient(90deg,#7b6fff,#a89eff);border-radius:3px;animation:vizpulse 1.3s ease-in-out infinite}
+@keyframes vizpulse{0%{transform:translateX(-100%)}100%{transform:translateX(360%)}}
+.viz-frame{width:100%;height:84vh;border:none;background:#fff;display:block}
+.viz-err{color:#ff8a8a}
+/* ── Skill viewer ── */
+.sv-action-btn{background:#141420;border:1px solid #2a2a3a;color:#a89eff;font-size:11.5px;font-family:inherit;padding:5px 11px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.sv-action-btn:hover{background:#1d1d2e;border-color:#7b6fff66;color:#c4bcff}
+.sv-action-btn.copied{background:#0f1a14;border-color:#1e3e1e;color:#7aff8a}
+.sv-path{padding:8px 24px;font-size:11px;color:#777;font-family:monospace;border-bottom:1px solid #1d1d22;word-break:break-all;flex-shrink:0;background:#0a0a0c}
+.md-body{padding:22px 28px;color:#cfcfd4;font-size:14px;line-height:1.7}
+.md-body h1,.md-body h2,.md-body h3{color:#e6e6ea;font-weight:650;line-height:1.3;margin:22px 0 10px}
+.md-body h1{font-size:22px;border-bottom:1px solid #23232a;padding-bottom:8px}
+.md-body h2{font-size:18px;border-bottom:1px solid #1d1d22;padding-bottom:6px}
+.md-body h3{font-size:15px}
+.md-body h1:first-child,.md-body h2:first-child,.md-body h3:first-child{margin-top:0}
+.md-body p{margin:10px 0}
+.md-body ul,.md-body ol{margin:10px 0;padding-left:24px}
+.md-body li{margin:4px 0}
+.md-body code{background:#16161c;border:1px solid #25252e;border-radius:4px;padding:1px 5px;font-size:12.5px;color:#e3b3ff;font-family:monospace}
+.md-body pre{background:#0a0a0e;border:1px solid #1d1d24;border-radius:8px;padding:14px 16px;overflow:auto;margin:12px 0}
+.md-body pre code{background:none;border:none;padding:0;color:#bfe3c8;font-size:12.5px;display:block;white-space:pre}
+.md-body a{color:#7b9fff;text-decoration:none}
+.md-body a:hover{text-decoration:underline}
+.md-body blockquote{border-left:3px solid #3a3a4a;margin:12px 0;padding:4px 14px;color:#9a9aa8;background:#0f0f14}
+.md-body hr{border:none;border-top:1px solid #23232a;margin:18px 0}
+.md-body strong{color:#eaeaef;font-weight:650}
+.md-body table{border-collapse:collapse;margin:12px 0;font-size:13px}
+.md-body th,.md-body td{border:1px solid #25252e;padding:6px 12px;text-align:left}
+.md-body th{background:#16161c;color:#e6e6ea}
+.modal-tabs{display:flex;gap:4px;padding:0 24px;background:#0d0d10;border-bottom:1px solid #1d1d22;flex-shrink:0}
+.modal-tab{padding:8px 14px;font-size:12px;color:#666;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;font-weight:500;margin-bottom:-1px}
+.modal-tab.active{color:#a89eff;border-bottom-color:#7b6fff}
+.modal-tab:hover:not(.active){color:#aaa}
+.conflict-progress{background:#111114;border:1px solid #1d1d22;border-radius:10px;padding:20px 24px}
+.conflict-progress-title{font-size:13px;color:#ccc;margin-bottom:12px;font-weight:600}
+.conflict-progress-bar{width:100%;height:8px;background:#1a1a20;border-radius:4px;overflow:hidden;margin-bottom:10px}
+.conflict-progress-fill{height:100%;background:linear-gradient(90deg,#7b6fff,#a89eff);border-radius:4px;transition:width .15s ease;width:0%}
+.conflict-progress-detail{display:flex;justify-content:space-between;font-size:11px;color:#555}
+.conflict-progress-detail span{color:#888}
+
+/* ── MCP cards ── */
+.mcp-server-card{background:#111114;border:1px solid #1d1d22;border-radius:12px;padding:18px 20px;margin-bottom:16px;transition:border-color .2s}
+.mcp-server-card:hover{border-color:#333}
+.mcp-srv-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.mcp-srv-icon{width:34px;height:34px;border-radius:8px;background:#1a1828;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;margin-top:2px}
+.mcp-srv-icon.http{background:#16241a}
+.mcp-srv-icon.disabled{background:#2a1414;opacity:.7}
+.mcp-srv-info{flex:1;min-width:0}
+.mcp-srv-name{font-size:14.5px;font-weight:700;color:#e5e5ea;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mcp-srv-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.mcp-badge{font-size:9.5px;padding:2px 8px;border-radius:4px;font-weight:600;letter-spacing:.04em}
+.mcp-badge.source{background:#1a1828;color:#a89eff;border:1px solid #2a2840}
+.mcp-badge.transport-stdio{background:#1a2418;color:#80c080;border:1px solid #2a3a28}
+.mcp-badge.transport-http{background:#181a2a;color:#80a0ff;border:1px solid #2a2a4a}
+.mcp-badge.tools{background:#1a1f24;color:#80b0d0;border:1px solid #2a3540}
+.mcp-badge.resources{background:#1a241a;color:#80c080;border:1px solid #2a3a28}
+.mcp-badge.enabled{background:#0f1a14;color:#5aaa6a;border:1px solid #1e2e1e}
+.mcp-badge.disabled{background:#1a0d0d;color:#ff7055;border:1px solid #3a1818}
+.mcp-srv-actions{display:flex;gap:6px;flex-shrink:0}
+.mcp-srv-actions button{background:#161618;border:1px solid #2a2a30;color:#aaa;border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.mcp-srv-actions button:hover{border-color:#444;color:#fff}
+.mcp-srv-actions button.primary{background:#7b6fff22;border-color:#7b6fff55;color:#a89eff}
+.mcp-srv-actions button.primary:hover{background:#7b6fff44}
+.mcp-srv-config{background:#0a0a0c;border:1px solid #1d1d22;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#999;display:flex;flex-direction:column;gap:5px}
+.mcp-cfg-row{display:flex;align-items:flex-start;gap:8px}
+.mcp-cfg-label{color:#555;font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.06em;min-width:78px;flex-shrink:0;padding-top:2px}
+.mcp-cfg-value{flex:1;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#bbb;word-break:break-all;line-height:1.5}
+.mcp-cfg-value.path{color:#888}
+.mcp-cfg-value.cmd{color:#80b0e0}
+.mcp-cfg-value.url{color:#80c080}
+.mcp-cfg-copy{background:transparent;border:1px solid #2a2a30;color:#666;border-radius:4px;padding:1px 7px;font-size:9.5px;cursor:pointer;flex-shrink:0;transition:all .15s}
+.mcp-cfg-copy:hover{border-color:#7b6fff55;color:#a89eff}
+.mcp-srv-section-title{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#666;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.mcp-srv-section-title .count{background:#1a1828;color:#a89eff;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:600}
+.mcp-tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.mcp-tool-card{background:#0d0d0f;border:1px solid #1e1e23;border-radius:8px;padding:12px 14px;transition:all .2s;cursor:default}
+.mcp-tool-card:hover{border-color:#7b6fff44}
+.mcp-tool-name{font-size:12.5px;font-weight:600;color:#a89eff;margin-bottom:4px;font-family:'Cascadia Code','Fira Code',monospace}
+.mcp-tool-desc{font-size:11px;color:#666;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px}
+.mcp-tool-params{display:flex;flex-wrap:wrap;gap:4px}
+.param-tag{font-size:9.5px;padding:1px 6px;background:#161618;border:1px solid #252528;border-radius:3px;color:#777;font-family:monospace}
+.param-tag.required{border-color:#7b6fff44;color:#9d8fff}
+.badge-server-type{background:#1a2a20;color:#4acf7a;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;margin-left:6px}
+.badge-tool-type{background:#1a1828;color:#9d8fff;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;margin-left:6px}
+.server-meta-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.server-meta-tag{font-size:10px;padding:2px 7px;background:#161618;border:1px solid #252528;border-radius:4px;color:#666}
+
+/* ── Empty / loading ── */
+.empty-state{text-align:center;padding:48px 20px;color:#444}
+.empty-state .icon{font-size:40px;margin-bottom:12px;opacity:.4}
+.empty-state p{font-size:13px}
+.loading{display:flex;align-items:center;gap:10px;color:#555;font-size:13px;padding:24px 0}
+.spinner{width:16px;height:16px;border:2px solid #333;border-top-color:#7b6fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Mode panels ── */
+.mode-panel{display:none}
+.mode-panel.active{display:block}
+
+/* ── Author byline ── */
+.byline{font-size:10.5px;color:#666;text-align:center;padding:8px 12px;border-top:1px solid #1a1a1c;background:#0a0a0b;flex-shrink:0;letter-spacing:.04em}
+.byline strong{color:#a89eff;font-weight:600}
+.byline a{color:#666;text-decoration:none;border-bottom:1px dotted #444}
+.byline a:hover{color:#a89eff;border-bottom-color:#a89eff}
+.byline-corner{position:absolute;top:8px;right:14px;font-size:10.5px;color:#555;letter-spacing:.05em;z-index:10;pointer-events:none}
+.byline-corner strong{color:#a89eff}
+
+/* ── Language switcher ── */
+.lang-switch{display:inline-flex;border:1px solid #2a2a2e;border-radius:6px;overflow:hidden;background:#141416}
+.lang-switch button{background:transparent;border:0;color:#888;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.04em;border-right:1px solid #2a2a2e}
+.lang-switch button:last-child{border-right:0}
+.lang-switch button.active{background:#a89eff;color:#0a0a0a}
+.lang-switch button:not(.active):hover{background:#1d1d20;color:#ccc}
+.sidebar-tools{display:flex;gap:6px;align-items:center;padding:8px 12px 10px;border-bottom:1px solid #1a1a1c;flex-shrink:0}
+.sidebar-tools .label-tiny{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-right:auto}
+
+/* ── Per-card translate button ── */
+.translate-btn{display:inline-flex;align-items:center;gap:4px;background:#141420;border:1px solid #2a2a3a;color:#8a8aa0;font-size:10.5px;font-family:inherit;padding:2px 8px;border-radius:4px;cursor:pointer;margin-left:8px;vertical-align:middle;letter-spacing:.03em}
+.translate-btn:hover{background:#1d1d2e;color:#b8b8d0;border-color:#3a3a5a}
+.translate-btn:disabled{opacity:.5;cursor:wait}
+.translate-btn.translated{background:#0f1a14;border-color:#1e3e1e;color:#7aff8a}
+.translate-btn.failed{background:#1a0f0f;border-color:#3e1e1e;color:#ff7070}
+.translate-original{font-size:11px;color:#555;margin-top:4px;font-style:italic;border-left:2px solid #333;padding-left:8px}
+.translate-error-tip{display:inline-block;font-size:10.5px;color:#ff7070;background:#1a0f0f;padding:1px 6px;border-radius:3px;margin-left:6px;border:1px solid #3e1e1e}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#252528;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#333}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-tools">
+      <span class="label-tiny" data-i18n="ui-lang">UI</span>
+      <div class="lang-switch" title="切换界面语言 / Switch UI language">
+        <button id="uiLangZh" onclick="setUiLang('zh')">中</button>
+        <button id="uiLangEn" onclick="setUiLang('en')">EN</button>
+      </div>
+    </div>
+    <div class="mode-switcher">
+      <button class="mode-btn active" data-mode="skills" onclick="switchMode('skills')" data-i18n="mode-skills">Skills</button>
+      <button class="mode-btn" data-mode="mcp" onclick="switchMode('mcp')" data-i18n="mode-mcp">MCP</button>
+    </div>
+
+    <!-- Skills sidebar -->
+    <div class="mode-panel active" id="sidebar-skills-panel">
+      <div class="view-toggle">
+        <button class="view-toggle-btn" id="viewByCategory" onclick="setSidebarView('category')">📂 分类</button>
+        <button class="view-toggle-btn active" id="viewBySource" onclick="setSidebarView('source')">📦 来源</button>
+      </div>
+      <div class="sidebar-scroll" id="sidebar-skills-scroll"></div>
+    </div>
+
+    <!-- MCP sidebar -->
+    <div class="mode-panel" id="sidebar-mcp-panel">
+      <div class="sidebar-header" data-i18n="sidebar-mcp-title">MCP Servers</div>
+      <div class="sidebar-scroll">
+        <div class="sidebar-section" data-key="mcp-all">
+          <div class="sidebar-section-header" onclick="toggleSection(this)">
+            <span class="sidebar-caret">▼</span>
+            <span class="sidebar-label" data-i18n="sidebar-all-servers">All Servers</span>
+            <span class="sidebar-count" id="count-mcp">0</span>
+          </div>
+          <div class="sidebar-section-body" id="sidebar-mcp-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit skill dirs button -->
+    <div style="padding:8px 12px 4px">
+      <button onclick="openSkillDirsModal()" style="width:100%;background:#1a2a1a;color:#7ec97e;border:1px solid #2a3a2a;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;text-align:left;" title="编辑 skill-dirs.json">
+        ⚙️ 编辑 Skill 扫描目录
+      </button>
+    </div>
+
+    <!-- Edit MCP dirs button -->
+    <div style="padding:0 12px 4px">
+      <button onclick="openMcpDirsModal()" style="width:100%;background:#16222e;color:#7ec0ff;border:1px solid #24384a;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;text-align:left;" title="编辑 mcp-dirs.json">
+        🔌 编辑 MCP 扫描目录
+      </button>
+    </div>
+
+    <!-- Author byline (bottom of sidebar) -->
+    <div class="byline">
+      Built with ♥ by <strong>amize</strong>
+      <br><span style="color:#444" data-i18n="byline-sub">Skill &amp; MCP Manager</span>
+    </div>
+  </aside>
+
+  <!-- Skill Dirs Modal -->
+  <div id="skill-dirs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;width:560px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:16px 20px;border-bottom:1px solid #333;display:flex;align-items:center;justify-content:space-between;">
+        <strong style="color:#e0e0e0;font-size:15px;">⚙️ Skill 扫描目录配置</strong>
+        <button onclick="closeSkillDirsModal()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:16px 20px;overflow-y:auto;flex:1;">
+        <p style="color:#888;font-size:12px;margin:0 0 12px">修改后点「保存」，无需重启服务器即可生效（缓存立即清除）。支持 <code style="color:#7ec97e">~</code> 路径，如 <code style="color:#7ec97e">~/.cursor/skills</code>。</p>
+        <div id="skill-dirs-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <button onclick="addSkillDirRow()" style="margin-top:12px;background:#1a2a1a;color:#7ec97e;border:1px dashed #3a5a3a;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;width:100%;">+ 添加目录</button>
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid #333;display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="closeSkillDirsModal()" style="background:#222;color:#aaa;border:1px solid #333;border-radius:6px;padding:7px 18px;font-size:13px;cursor:pointer;">取消</button>
+        <button onclick="saveSkillDirs()" style="background:#2a5a2a;color:#7ec97e;border:1px solid #3a7a3a;border-radius:6px;padding:7px 18px;font-size:13px;cursor:pointer;font-weight:600;">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MCP Dirs Modal -->
+  <div id="mcp-dirs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;width:660px;max-width:95vw;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:16px 20px;border-bottom:1px solid #333;display:flex;align-items:center;justify-content:space-between;">
+        <strong style="color:#e0e0e0;font-size:15px;">🔌 MCP 扫描目录配置</strong>
+        <button onclick="closeMcpDirsModal()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:16px 20px;overflow-y:auto;flex:1;">
+        <p style="color:#888;font-size:12px;margin:0 0 12px">修改后点「保存」，无需重启即可生效（缓存立即清除）。支持 <code style="color:#7ec0ff">~</code> 路径。某类留空 = 关闭该来源。</p>
+        <div id="mcp-dirs-sections" style="display:flex;flex-direction:column;gap:14px;"></div>
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid #333;display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="closeMcpDirsModal()" style="background:#222;color:#aaa;border:1px solid #333;border-radius:6px;padding:7px 18px;font-size:13px;cursor:pointer;">取消</button>
+        <button onclick="saveMcpDirs()" style="background:#1e3a52;color:#7ec0ff;border:1px solid #2f5a80;border-radius:6px;padding:7px 18px;font-size:13px;cursor:pointer;font-weight:600;">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="byline-corner">by <strong>amize</strong></div>
+    <!-- ═══════ Skills Mode ═══════ -->
+    <div class="mode-panel active" id="main-skills">
+      <div class="page-header">
+        <h1 data-i18n="page-title">Skill &amp; MCP Manager</h1>
+        <p>
+          <span data-i18n="page-subtitle">搜索、排序和冲突检测所有 AI Agent Skills。</span>
+          <span data-i18n="page-subtitle-2">索引缓存 30s 自动刷新。</span>
+        </p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="demo" onclick="switchTab('demo')" data-i18n="tab-demo">Interactive Demo</button>
+        <button class="tab-btn" data-tab="conflicts" onclick="switchTab('conflicts')">
+          <span data-i18n="tab-conflicts">Conflict Analysis</span> <span class="tab-badge danger" id="conflictBadge">…</span>
+        </button>
+      </div>
+
+      <!-- Tab: Demo -->
+      <div class="tab-panel active" id="panel-demo">
+        <div class="pipeline-section">
+          <div class="pipeline-title">Selection Pipeline</div>
+          <div class="pipeline-track">
+            <div class="pipeline-step"><div class="pipeline-box" id="pipe-input"><div class="box-title">task description</div><div class="box-sub">user query</div></div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step"><div class="pipeline-box" id="pipe-index"><div class="box-title">build index</div><div class="box-sub">scan SKILL.md</div></div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step"><div class="pipeline-box" id="pipe-score"><div class="box-title">keyword scoring</div><div class="box-sub">tokenize + match</div></div></div>
+            <div class="pipeline-arrow" id="pipe-arrow-or">or</div>
+            <div class="pipeline-step"><div class="pipeline-box" id="pipe-llm"><div class="box-title">Claude LLM call</div><div class="box-sub">semantic match</div></div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step"><div class="pipeline-box" id="pipe-resolve"><div class="box-title">resolve paths</div><div class="box-sub">match → fs paths</div></div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step"><div class="pipeline-box highlight" id="pipe-output"><div class="box-title">skillset output</div><div class="box-sub">ranked results</div></div></div>
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <div class="section-title" data-i18n="demo-section-title">Interactive Demo</div>
+          <div class="section-sub" data-i18n="demo-section-sub">输入任务描述，查看哪些 Skills 评分最高（关键词模拟 LLM 排序）。</div>
+          <div id="aiStatusBar"></div>
+          <div class="search-wrap">
+            <input class="search-input" id="queryInput" type="text" data-i18n-placeholder="search-placeholder-skill" placeholder="e.g. debug NR PUSCH broken antenna, send file to feishu, upgrade BBU software..."/>
+            <div class="search-mode-toggle">
+              <button class="search-mode-btn active-kw" id="modeKw" onclick="setSearchMode('keyword')">Keyword</button>
+              <button class="search-mode-btn" id="modeAi" onclick="setSearchMode('ai')">AI</button>
+            </div>
+            <button class="search-btn" onclick="doSearch()" data-i18n="search-btn">Search</button>
+          </div>
+          <div class="examples">
+            <span class="example-chip" onclick="setQuery('debug NR PUSCH sinr broken antenna SCT discrepancy')">PUSCH broken antenna</span>
+            <span class="example-chip" onclick="setQuery('upgrade BBU software version')">BBU upgrade</span>
+            <span class="example-chip" onclick="setQuery('send file image to feishu')">send feishu</span>
+            <span class="example-chip" onclick="setQuery('create figma design component')">Figma design</span>
+            <span class="example-chip" onclick="setQuery('run robot automation test case')">robot test</span>
+            <span class="example-chip" onclick="setQuery('check base station on air cell status alarm')">BTS status</span>
+            <span class="example-chip" onclick="setQuery('search jira task sprint worklog')">Jira query</span>
+            <span class="example-chip" onclick="setQuery('Nokia RRU upgrade latest version')">RRU upgrade</span>
+            <span class="example-chip" onclick="setQuery('robot output.xml case failed analysis')">result analysis</span>
+          </div>
+          <div class="stats-bar" id="statsBar"></div>
+          <div id="resultsHeader" class="results-header" style="display:none"><div class="results-count" id="resultsCount"></div></div>
+          <div id="resultsContainer"><div class="empty-state"><div class="icon">🔍</div><p data-i18n="empty-state-skill">输入任务描述，查看匹配的技能</p></div></div>
+        </div>
+      </div>
+
+      <!-- Tab: Conflicts -->
+      <div class="tab-panel" id="panel-conflicts">
+        <div class="demo-section">
+          <div class="section-title">Conflict Analysis</div>
+          <div class="section-sub">检测 description 和触发词重叠的技能对，避免 LLM 选错技能。</div>
+          <div class="conflicts-toolbar">
+            <div class="filter-row">
+              <span class="filter-label">严重度</span>
+              <label class="filter-chip sev-high"><input type="checkbox" data-filter="severity" value="high" checked onchange="renderConflicts()"> 高 (≥0.5)</label>
+              <label class="filter-chip sev-med"><input type="checkbox" data-filter="severity" value="medium" checked onchange="renderConflicts()"> 中 (≥0.3)</label>
+              <label class="filter-chip sev-low"><input type="checkbox" data-filter="severity" value="low" checked onchange="renderConflicts()"> 低 (≥0.15)</label>
+              <button class="filter-btn" onclick="toggleAll('severity')" title="全选/全不选">⇄ 反选</button>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">来源</span>
+              <span id="sourceFilterChips"></span>
+              <button class="filter-btn" onclick="toggleAll('source')" title="全选/全不选">⇄ 反选</button>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">关系</span>
+              <label class="filter-chip"><input type="radio" name="relation" value="all" checked onchange="renderConflicts()"> 全部</label>
+              <label class="filter-chip"><input type="radio" name="relation" value="cross" onchange="renderConflicts()"> 跨来源（最危险）</label>
+              <label class="filter-chip"><input type="radio" name="relation" value="same" onchange="renderConflicts()"> 同来源</label>
+              <label class="filter-chip" title="只看属于同一功能分类的冲突——这些才是 AI agent 真正会混淆的技能对"><input type="radio" name="relation" value="samecat" onchange="renderConflicts()"> 🎯 同类（最值得修）</label>
+              <span class="filter-label" style="margin-left:20px">排序</span>
+              <button class="filter-btn" id="sortBtn" onclick="toggleSort()">相似度 ↓</button>
+              <button class="btn-refresh" onclick="loadConflicts()">↻ 重新分析</button>
+            </div>
+          </div>
+          <div class="conflict-summary" id="conflictSummary"></div>
+          <div id="conflictContainer"><div class="loading"><div class="spinner"></div> 计算冲突中…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ MCP Mode ═══════ -->
+    <div class="mode-panel" id="main-mcp">
+      <div class="page-header">
+        <h1 data-i18n="mcp-page-title">MCP Tool Browser</h1>
+        <p>
+          <span data-i18n="mcp-page-sub">浏览所有 Cursor 项目中注册的 MCP Server 和 Tools。</span>
+          <span data-i18n="mcp-page-sub-2">自动去重，每个 Server 只展示一次。</span>
+        </p>
+      </div>
+
+      <div class="demo-section" style="margin-bottom:24px">
+        <div class="section-title" data-i18n="mcp-search-title">Search MCP Tools</div>
+        <div class="section-sub" data-i18n="mcp-search-sub">搜索 MCP 工具名或描述关键词。</div>
+        <div class="search-wrap">
+          <input class="search-input" id="mcpQueryInput" type="text" data-i18n-placeholder="search-placeholder-mcp" placeholder="e.g. browser navigate, figma design, screenshot, sequential thinking..."/>
+          <button class="search-btn" onclick="doMcpSearch()" data-i18n="search-btn">Search</button>
+        </div>
+        <div class="examples">
+          <span class="example-chip" onclick="setMcpQuery('browser navigate screenshot')">browser</span>
+          <span class="example-chip" onclick="setMcpQuery('figma design component')">figma</span>
+          <span class="example-chip" onclick="setMcpQuery('sequential thinking')">thinking</span>
+          <span class="example-chip" onclick="setMcpQuery('click type fill form')">form interaction</span>
+        </div>
+        <div class="stats-bar" id="mcpStatsBar"></div>
+        <div id="mcpSearchResults"></div>
+      </div>
+
+      <div id="mcpServersContainer">
+        <div class="loading"><div class="spinner"></div> Loading MCP servers…</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Compare modal -->
+<div class="modal-backdrop" id="compareModal" onclick="if(event.target===this)closeCompare()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="compareTitle">Compare Skills</div>
+      <button class="modal-close" onclick="closeCompare()">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tab-diff" onclick="setCompareView('diff')">Diff View</button>
+      <button class="modal-tab" id="tab-side" onclick="setCompareView('side')">Side-by-side</button>
+    </div>
+    <div class="modal-body" id="compareBody"></div>
+  </div>
+</div>
+
+<!-- Skill viewer modal -->
+<div class="modal-backdrop" id="skillViewerModal" onclick="if(event.target===this)closeSkillViewer()">
+  <div class="modal" style="max-width:1000px">
+    <div class="modal-header">
+      <div class="modal-title" id="skillViewerTitle">SKILL.md</div>
+      <button class="sv-action-btn" id="skillViewerOpenBtn" onclick="openSkillFileInEditor()" title="在系统默认编辑器中打开此文件">📂 用编辑器打开</button>
+      <button class="sv-action-btn" id="skillViewerCopyBtn" onclick="copySkillViewerPath(this)" title="复制文件路径">📋 复制路径</button>
+      <button class="modal-close" onclick="closeSkillViewer()">×</button>
+    </div>
+    <div class="sv-path" id="skillViewerPath"></div>
+    <div class="modal-body" id="skillViewerBody" style="overflow:auto;padding:0"></div>
+  </div>
+</div>
+
+<!-- Skill view chooser -->
+<div class="modal-backdrop" id="skillChooserModal" onclick="if(event.target===this)closeSkillChooser()">
+  <div class="chooser-dialog">
+    <div class="chooser-head">
+      <div class="chooser-title" id="chooserTitle">选择查看方式</div>
+      <button class="modal-close" onclick="closeSkillChooser()">×</button>
+    </div>
+    <div class="chooser-options">
+      <button class="chooser-opt" onclick="chooseView('md')">
+        <div class="chooser-opt-icon">📄</div>
+        <div class="chooser-opt-text">
+          <div class="chooser-opt-name">查看 SKILL.md 源文件</div>
+          <div class="chooser-opt-desc">直接阅读原始 Markdown 内容</div>
+        </div>
+      </button>
+      <button class="chooser-opt" onclick="chooseView('viz')">
+        <div class="chooser-opt-icon">🎨</div>
+        <div class="chooser-opt-text">
+          <div class="chooser-opt-name">Skill 学习导览（可视化）</div>
+          <div class="chooser-opt-desc">由 skill-visualizer 生成的精美单页 HTML</div>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Skill visualization modal (iframe) -->
+<div class="modal-backdrop" id="vizModal" onclick="if(event.target===this)closeViz()">
+  <div class="modal" style="max-width:1280px">
+    <div class="modal-header">
+      <div class="modal-title" id="vizTitle">Skill 学习导览</div>
+      <button class="sv-action-btn" id="vizRegenBtn" onclick="regenerateViz()" title="忽略缓存，重新生成">🔄 重新生成</button>
+      <button class="sv-action-btn" id="vizOpenTabBtn" onclick="openVizNewTab()" title="在新标签页打开">↗ 新标签打开</button>
+      <button class="modal-close" onclick="closeViz()">×</button>
+    </div>
+    <div class="modal-body" id="vizBody" style="overflow:hidden;padding:0"></div>
+  </div>
+</div>
+
+<!-- Confirm delete dialog -->
+<div class="confirm-backdrop" id="confirmDialog" onclick="if(event.target===this)closeConfirm()">
+  <div class="confirm-dialog">
+    <div class="confirm-header">⚠️ 确认删除 Skill</div>
+    <div class="confirm-body" id="confirmBody"></div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">取消</button>
+      <button class="btn-confirm-delete" id="confirmDeleteBtn" disabled onclick="executeDelete()">永久删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<!-- Inspector modal -->
+<div class="modal-backdrop" id="inspectorModal" onclick="if(event.target===this)closeInspector()">
+  <div class="modal" style="max-width:920px;height:auto;max-height:80vh">
+    <div class="modal-header">
+      <div class="modal-title" id="inspectorTitle">MCP Inspector</div>
+      <button class="modal-close" onclick="closeInspector()">×</button>
+    </div>
+    <div id="inspectorBody" style="padding:18px 22px;overflow:auto;display:flex;flex-direction:column;gap:14px"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:3791';
+let allConflicts = [];
+let currentMode = 'skills';
+let searchMode = 'keyword';
+let llmAvailable = false;
+
+// ── i18n ──────────────────────────────────────────────────────────────────────
+const I18N = {
+  zh: {
+    'ui-lang': '界面',
+    'mode-skills': 'Skills',
+    'mode-mcp': 'MCP',
+    'sidebar-mcp-title': 'MCP Servers',
+    'sidebar-all-servers': '全部 Server',
+    'byline-sub': 'Skill & MCP 管理器',
+    'page-title': 'Skill & MCP Manager',
+    'page-subtitle': '搜索、排序和冲突检测所有 AI Agent Skills。',
+    'page-subtitle-2': '索引缓存 30s 自动刷新。',
+    'tab-demo': '交互式搜索',
+    'tab-conflicts': '冲突检测',
+    'demo-section-title': '交互式搜索',
+    'demo-section-sub': '输入任务描述，查看哪些 Skills 评分最高（关键词或 LLM 语义排序）。',
+    'search-placeholder-skill': '例如：调试 NR PUSCH 信号、发送文件到飞书、升级 BBU 软件…',
+    'search-placeholder-mcp': '例如：browser navigate, figma design, screenshot…',
+    'search-btn': '搜索',
+    'empty-state-skill': '输入任务描述，查看匹配的技能',
+    'mcp-page-title': 'MCP 工具浏览器',
+    'mcp-page-sub': '浏览所有 Cursor 项目中注册的 MCP Server 和 Tools。',
+    'mcp-page-sub-2': '自动去重，每个 Server 只展示一次。',
+    'mcp-search-title': '搜索 MCP 工具',
+    'mcp-search-sub': '搜索 MCP 工具名或描述关键词。',
+    'translate-to-zh': '译为中文',
+    'translate-to-en': 'Translate to EN',
+    'translate-failed': '翻译失败',
+    'translate-restore': '恢复原文',
+  },
+  en: {
+    'ui-lang': 'UI',
+    'mode-skills': 'Skills',
+    'mode-mcp': 'MCP',
+    'sidebar-mcp-title': 'MCP Servers',
+    'sidebar-all-servers': 'All Servers',
+    'byline-sub': 'Skill & MCP Manager',
+    'page-title': 'Skill & MCP Manager',
+    'page-subtitle': 'Search, rank, and detect conflicts across all AI Agent Skills.',
+    'page-subtitle-2': 'Index auto-refreshes every 30 s.',
+    'tab-demo': 'Interactive Demo',
+    'tab-conflicts': 'Conflict Analysis',
+    'demo-section-title': 'Interactive Demo',
+    'demo-section-sub': 'Enter a task description to see which Skills rank highest (keyword or LLM semantic).',
+    'search-placeholder-skill': 'e.g. debug NR PUSCH broken antenna, send file to feishu, upgrade BBU software…',
+    'search-placeholder-mcp': 'e.g. browser navigate, figma design, screenshot, sequential thinking…',
+    'search-btn': 'Search',
+    'empty-state-skill': 'Enter a task description to see matching Skills',
+    'mcp-page-title': 'MCP Tool Browser',
+    'mcp-page-sub': 'Browse all MCP Servers and Tools registered across Cursor projects.',
+    'mcp-page-sub-2': 'Auto-deduplicated — each server shown once.',
+    'mcp-search-title': 'Search MCP Tools',
+    'mcp-search-sub': 'Search MCP tool name or description keywords.',
+    'translate-to-zh': '译为中文',
+    'translate-to-en': 'Translate to EN',
+    'translate-failed': 'Translation failed',
+    'translate-restore': 'Restore original',
+  },
+};
+let UI_LANG = localStorage.getItem('uiLang') || 'zh';
+function t(key) { return (I18N[UI_LANG] && I18N[UI_LANG][key]) || (I18N.en[key] || key); }
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  const zhBtn = document.getElementById('uiLangZh');
+  const enBtn = document.getElementById('uiLangEn');
+  if (zhBtn && enBtn) {
+    zhBtn.classList.toggle('active', UI_LANG === 'zh');
+    enBtn.classList.toggle('active', UI_LANG === 'en');
+  }
+  document.documentElement.lang = UI_LANG === 'zh' ? 'zh-CN' : 'en';
+}
+function setUiLang(lang) {
+  if (!['zh', 'en'].includes(lang)) return;
+  UI_LANG = lang;
+  localStorage.setItem('uiLang', lang);
+  applyI18n();
+  // Re-render dynamic content that's already on the page
+  if (typeof renderSidebar === 'function' && window.__lastSkills) renderSidebar(window.__lastSkills);
+  if (typeof renderMcpResults === 'function' && window.__lastMcpResults) renderMcpResults(window.__lastMcpResults);
+}
+
+// ── Content translate (translate dynamic descriptions on-demand) ──────────────
+const translateCache = new Map(); // key: `${target}|${text}` -> { ok, translated, error }
+async function translateText(text, target) {
+  const key = `${target}|${text}`;
+  if (translateCache.has(key)) return translateCache.get(key);
+  try {
+    const resp = await fetch(`${API}/api/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, target }),
+    });
+    const data = await resp.json();
+    translateCache.set(key, data);
+    return data;
+  } catch (e) {
+    const data = { ok: false, error: e.message };
+    translateCache.set(key, data);
+    return data;
+  }
+}
+
+// Toggle translation for a `.translatable` description element.
+// Element is expected to have: data-original text content (the original)
+// After click, replaces innerHTML with translated text and toggles button state.
+async function toggleTranslate(btn) {
+  const target = btn.dataset.target; // 'zh' or 'en'
+  const wrap = btn.closest('.translatable-wrap');
+  if (!wrap) return;
+  const descEl = wrap.querySelector('.translatable-text');
+  if (!descEl) return;
+  const original = wrap.dataset.original || descEl.textContent;
+  wrap.dataset.original = original;
+
+  // If already translated, restore
+  if (btn.classList.contains('translated')) {
+    descEl.textContent = original;
+    btn.classList.remove('translated');
+    btn.textContent = target === 'zh' ? '🌐 ' + t('translate-to-zh') : '🌐 ' + t('translate-to-en');
+    return;
+  }
+
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = '⏳ …';
+  const r = await translateText(original, target);
+  btn.disabled = false;
+
+  if (r.ok && r.translated) {
+    descEl.textContent = r.translated;
+    btn.classList.add('translated');
+    btn.classList.remove('failed');
+    btn.textContent = '✓ ' + t('translate-restore');
+  } else {
+    btn.classList.add('failed');
+    btn.classList.remove('translated');
+    btn.textContent = '⚠ ' + t('translate-failed');
+    btn.title = r.error || 'Unknown translation error';
+    // Restore button text after 3s so user can retry
+    setTimeout(() => {
+      btn.classList.remove('failed');
+      btn.textContent = oldText;
+      btn.title = '';
+    }, 3500);
+  }
+}
+
+// Build a translate button HTML for a description text. The description should
+// be wrapped in <div class="translatable-wrap"><div class="translatable-text">DESC</div></div>
+function translateButtonHtml(target) {
+  const label = target === 'zh' ? t('translate-to-zh') : t('translate-to-en');
+  return `<button class="translate-btn" data-target="${target}" onclick="toggleTranslate(this)" title="${target === 'zh' ? '通过在线翻译将描述译为中文' : 'Translate description to English via online API'}">🌐 ${label}</button>`;
+}
+
+// ── Mode switching ────────────────────────────────────────────────────────────
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('sidebar-skills-panel').classList.toggle('active', mode === 'skills');
+  document.getElementById('sidebar-mcp-panel').classList.toggle('active', mode === 'mcp');
+  document.getElementById('main-skills').classList.toggle('active', mode === 'skills');
+  document.getElementById('main-mcp').classList.toggle('active', mode === 'mcp');
+  if (mode === 'mcp' && !document.getElementById('mcpServersContainer').dataset.loaded) {
+    loadMcpServers();
+  }
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === `panel-${name}`);
+  });
+  if (name === 'conflicts' && !allConflicts.length) loadConflicts();
+}
+
+// ── Skills Init ───────────────────────────────────────────────────────────────
+async function init() {
+  applyI18n();
+  try {
+    const [statsRes, skillsRes] = await Promise.all([
+      fetch(`${API}/api/stats`),
+      fetch(`${API}/api/skills`),
+    ]);
+    renderStats(await statsRes.json());
+    const skills = await skillsRes.json();
+    window.__lastSkills = skills;
+    renderSidebar(skills);
+  } catch {
+    document.getElementById('statsBar').innerHTML =
+      '<div class="stat-chip" style="color:#ff6b6b">⚠ Server not reachable — run: npm start</div>';
+  }
+
+  // Conflict badge — defer full computation until tab is opened
+  document.getElementById('conflictBadge').textContent = '…';
+
+  // Pre-load MCP stats for sidebar badge
+  try {
+    const res = await fetch(`${API}/api/mcp/stats`);
+    const mcpStats = await res.json();
+    renderMcpStats(mcpStats);
+  } catch {}
+
+  // Check LLM availability
+  checkLlmStatus();
+}
+
+async function checkLlmStatus() {
+  const bar = document.getElementById('aiStatusBar');
+  bar.innerHTML = '<div class="ai-status-bar loading">Checking Claude SDK...</div>';
+  try {
+    const res = await fetch(`${API}/api/llm/status`);
+    const data = await res.json();
+    llmAvailable = data.available;
+    if (llmAvailable) {
+      bar.innerHTML = '<div class="ai-status-bar ok">Claude SDK ready — AI mode available</div>';
+    } else {
+      bar.innerHTML = '<div class="ai-status-bar err">Claude SDK unavailable — AI mode disabled (pip install claude-agent-sdk)</div>';
+    }
+  } catch {
+    bar.innerHTML = '';
+  }
+  setTimeout(() => { if (bar.firstChild) bar.firstChild.style.opacity = '0.5'; }, 5000);
+}
+
+function setSearchMode(mode) {
+  searchMode = mode;
+  const kwBtn = document.getElementById('modeKw');
+  const aiBtn = document.getElementById('modeAi');
+  kwBtn.className = 'search-mode-btn' + (mode === 'keyword' ? ' active-kw' : '');
+  aiBtn.className = 'search-mode-btn' + (mode === 'ai' ? ' active-ai' : '');
+  updatePipelineHighlight(mode);
+}
+
+function updatePipelineHighlight(mode) {
+  document.getElementById('pipe-score').className = 'pipeline-box' + (mode === 'keyword' ? ' active' : '');
+  document.getElementById('pipe-llm').className = 'pipeline-box' + (mode === 'ai' ? ' active' : '');
+  document.getElementById('pipe-arrow-or').style.color = '#666';
+}
+
+function renderStats(stats) {
+  const labelMap = { 'cursor-builtin':'Cursor Built-in', 'cursor-skills':'Cursor Skills', 'claude-skills':'Claude Skills', 'gemini-projects':'Gemini Projects' };
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-chip">Total: <span>${stats.total}</span></div>
+    ${Object.entries(stats.bySource).map(([k,v]) =>
+      `<div class="stat-chip">${labelMap[k]||k}: <span>${v}</span></div>`
+    ).join('')}
+    ${stats.byCategory ? Object.entries(stats.byCategory).map(([k,v]) =>
+      `<div class="stat-chip" style="border-color:#333">${CATEGORY_ICONS[k]||'📦'} ${v}</div>`
+    ).join('') : ''}
+  `;
+}
+
+function renderMcpStats(stats) {
+  document.getElementById('mcpStatsBar').innerHTML = `
+    <div class="stat-chip">Servers: <span>${stats.serverCount}</span></div>
+    <div class="stat-chip">Tools: <span>${stats.totalTools}</span></div>
+    <div class="stat-chip">Resources: <span>${stats.totalResources}</span></div>
+  `;
+}
+
+let sidebarView = localStorage.getItem('sidebar-view') || 'category';
+
+const CATEGORY_ICONS = {
+  'nokia': '📡', 'feishu': '💬', 'knowledge': '📚', 'dev-tools': '🛠️',
+  'system': '💻', 'browser': '🌐', 'ai-agent': '🤖', 'media': '🎵',
+  'cursor-builtin': '⚡', 'other': '📦',
+};
+const SOURCE_ICONS = {
+  'cursor-builtin': '⚡', 'cursor-skills': '🎯', 'claude-skills': '🧠', 'gemini-projects': '♊',
+};
+const SOURCE_LABELS = {
+  'cursor-builtin': 'Cursor Built-in', 'cursor-skills': 'Cursor Skills',
+  'claude-skills': 'Claude Skills', 'gemini-projects': 'Gemini Projects',
+};
+
+function setSidebarView(view) {
+  sidebarView = view;
+  localStorage.setItem('sidebar-view', view);
+  document.getElementById('viewByCategory').classList.toggle('active', view === 'category');
+  document.getElementById('viewBySource').classList.toggle('active', view === 'source');
+  if (window.__lastSkills) renderSidebar(window.__lastSkills);
+}
+
+function renderSidebar(skills) {
+  const container = document.getElementById('sidebar-skills-scroll');
+  if (!container) return;
+  if (sidebarView === 'category') {
+    renderSidebarByCategory(skills, container);
+  } else {
+    renderSidebarBySource(skills, container);
+  }
+  applyCollapsedState();
+  // Sync toggle button state
+  document.getElementById('viewByCategory').classList.toggle('active', sidebarView === 'category');
+  document.getElementById('viewBySource').classList.toggle('active', sidebarView === 'source');
+}
+
+function renderSidebarByCategory(skills, container) {
+  const catOrder = ['nokia', 'feishu', 'knowledge', 'dev-tools', 'system', 'browser', 'ai-agent', 'media', 'cursor-builtin', 'other'];
+  const groups = {};
+  for (const s of skills) {
+    const cat = s.category || 'other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(s);
+  }
+  const sorted = catOrder.filter(k => groups[k] && groups[k].length).map(k => [k, groups[k]]);
+  for (const k of Object.keys(groups)) { if (!catOrder.includes(k)) sorted.push([k, groups[k]]); }
+
+  container.innerHTML = sorted.map(([cat, items]) => {
+    const icon = CATEGORY_ICONS[cat] || '📦';
+    const label = items[0]?.categoryLabel || cat;
+    return `
+      <div class="sidebar-section" data-key="cat-${cat}">
+        <div class="sidebar-section-header" onclick="toggleSection(this)">
+          <span class="sidebar-caret">▼</span>
+          <span class="cat-icon">${icon}</span>
+          <span class="sidebar-label">${escHtml(label)}</span>
+          <span class="sidebar-count">${items.length}</span>
+        </div>
+        <div class="sidebar-section-body">
+          ${items.map(s => `
+            <div class="sidebar-item" onclick="setQuery('${escHtml(s.name)}')" title="${escHtml(s.filePath||'')}">
+              <span class="dot ${sourceDotColor(s.source)}"></span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.name)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderSidebarBySource(skills, container) {
+  const srcOrder = ['cursor-builtin', 'cursor-skills', 'claude-skills', 'gemini-projects'];
+  const groups = {};
+  for (const s of skills) {
+    const src = s.source || 'other';
+    if (!groups[src]) groups[src] = [];
+    groups[src].push(s);
+  }
+  const sorted = srcOrder.filter(k => groups[k]).map(k => [k, groups[k]]);
+  for (const k of Object.keys(groups)) { if (!srcOrder.includes(k)) sorted.push([k, groups[k]]); }
+
+  container.innerHTML = sorted.map(([src, items]) => {
+    const icon = SOURCE_ICONS[src] || '📦';
+    const label = SOURCE_LABELS[src] || src;
+    return `
+      <div class="sidebar-section" data-key="src-${src}">
+        <div class="sidebar-section-header" onclick="toggleSection(this)">
+          <span class="sidebar-caret">▼</span>
+          <span class="cat-icon">${icon}</span>
+          <span class="sidebar-label">${escHtml(label)}</span>
+          <span class="sidebar-count">${items.length}</span>
+        </div>
+        <div class="sidebar-section-body">
+          ${items.map(s => `
+            <div class="sidebar-item" onclick="setQuery('${escHtml(s.name)}')" title="${escHtml(s.filePath||'')}">
+              <span class="dot"></span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.name)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function sourceDotColor(source) {
+  if (source === 'cursor-builtin') return 'blue';
+  if (source === 'cursor-skills') return 'green';
+  if (source === 'claude-skills') return 'purple';
+  return '';
+}
+
+function toggleSection(headerEl) {
+  const section = headerEl.closest('.sidebar-section');
+  const key = section.dataset.key;
+  section.classList.toggle('collapsed');
+  const collapsed = JSON.parse(localStorage.getItem('sidebar-collapsed') || '{}');
+  collapsed[key] = section.classList.contains('collapsed');
+  localStorage.setItem('sidebar-collapsed', JSON.stringify(collapsed));
+}
+
+function applyCollapsedState() {
+  const collapsed = JSON.parse(localStorage.getItem('sidebar-collapsed') || '{}');
+  document.querySelectorAll('.sidebar-section').forEach(sec => {
+    if (collapsed[sec.dataset.key]) sec.classList.add('collapsed');
+  });
+}
+
+// ── Skill Search ──────────────────────────────────────────────────────────────
+async function doSearch() {
+  const query = document.getElementById('queryInput').value.trim();
+  if (!query) return;
+  const container = document.getElementById('resultsContainer');
+  document.getElementById('resultsHeader').style.display = 'none';
+
+  if (searchMode === 'ai') {
+    container.innerHTML = '<div class="loading"><div class="spinner"></div> Claude is thinking... (may take 10-30s)</div>';
+    try {
+      const res = await fetch(`${API}/api/llm-search`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query}) });
+      const data = await res.json();
+      renderLlmResults(data);
+    } catch { container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>无法连接到服务器</p></div>'; }
+  } else {
+    container.innerHTML = '<div class="loading"><div class="spinner"></div> Scoring skills…</div>';
+    try {
+      const res = await fetch(`${API}/api/search`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query}) });
+      renderResults(await res.json());
+    } catch { container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>无法连接到服务器</p></div>'; }
+  }
+}
+
+function renderResults(results) {
+  const container = document.getElementById('resultsContainer');
+  const header = document.getElementById('resultsHeader');
+  if (!results.length) { header.style.display='none'; container.innerHTML='<div class="empty-state"><div class="icon">🤷</div><p>No matching skills found</p></div>'; return; }
+  const maxScore = results[0].score;
+  header.style.display = 'flex';
+  document.getElementById('resultsCount').innerHTML = `Showing <span>${results.length}</span> matching skills`;
+  container.innerHTML = `<div class="results-grid">${results.map(s => renderCard(s, maxScore, false)).join('')}</div>`;
+}
+
+function renderFallbackBanner(data) {
+  if (!data.fallback) return '';
+  const cat = data.fallbackCategory || 'error';
+  const reason = data.fallbackReason || '';
+  const info = {
+    quota:       { icon: '💳', title: 'Claude API 配额已用完', desc: '已自动切换到关键词搜索。请到 <code>https://console.anthropic.com</code> 充值或检查 <code>~/.claude.json</code> 配置。' },
+    auth:        { icon: '🔐', title: 'Claude 认证失败',         desc: '已自动切换到关键词搜索。请运行 <code>claude</code> CLI 重新登录。' },
+    ratelimit:   { icon: '⏳', title: '请求频率被限流',           desc: '已自动切换到关键词搜索。稍等片刻再试 AI 模式。' },
+    timeout:     { icon: '⏱️', title: 'Claude 调用超时',          desc: '已自动切换到关键词搜索。可能是网络慢或 Skill 数量太多。' },
+    'cli-missing':{icon: '⚠️', title: 'Claude CLI 未找到',         desc: '已自动切换到关键词搜索。请检查 <code>claude</code> 是否在 PATH 中。' },
+    error:       { icon: '⚠️', title: 'LLM 调用失败',              desc: '已自动切换到关键词搜索。详见下方原始错误。' },
+  }[cat] || { icon: '⚠️', title: 'LLM 调用失败', desc: '已自动切换到关键词搜索。' };
+  return `
+    <div class="fallback-banner ${cat}">
+      <div class="icon">${info.icon}</div>
+      <div style="flex:1;min-width:0">
+        <strong>${info.title}</strong>
+        <div>${info.desc}</div>
+        ${reason ? `<div style="margin-top:6px;font-size:11px;color:#888;font-family:ui-monospace,Consolas,monospace;word-break:break-all">${escHtml(reason.slice(0,300))}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderLlmResults(data) {
+  const container = document.getElementById('resultsContainer');
+  const header = document.getElementById('resultsHeader');
+  const results = data.results || [];
+  const banner = renderFallbackBanner(data);
+
+  if (!results.length) {
+    header.style.display='none';
+    const errMsg = data.error ? `<br><small style="color:#666">${escHtml(data.error).slice(0,200)}</small>` : '';
+    container.innerHTML = `${banner}<div class="empty-state"><div class="icon">🤷</div><p>No matching skills found${errMsg}</p></div>`;
+    return;
+  }
+  const maxScore = results[0].score || 100;
+  header.style.display = 'flex';
+  const modeTag = data.fallback
+    ? ' <span style="color:#f0a040;font-weight:600">[Keyword fallback]</span>'
+    : ' <span style="color:#7aff8a;font-weight:600">[Claude AI]</span>';
+  const latencyTag = data.latencyMs ? ` <span class="ai-latency">${(data.latencyMs/1000).toFixed(1)}s</span>` : '';
+  document.getElementById('resultsCount').innerHTML = `Showing <span>${results.length}</span> matching skills${modeTag}${latencyTag}`;
+  container.innerHTML = `${banner}<div class="results-grid">${results.map(s => renderCard(s, maxScore, !data.fallback)).join('')}</div>`;
+}
+
+function renderCard(skill, maxScore, showReason) {
+  const pct = maxScore > 0 ? Math.round((skill.score / maxScore) * 100) : 0;
+  const bc = getBadgeClass(skill.source);
+  const triggers = (skill.triggers||[]).slice(0,3).map(t => `<span class="trigger-tag">${escHtml(t.slice(0,20))}</span>`).join('');
+  const reasonHtml = showReason && skill.reason ? `<div class="ai-reason">${escHtml(skill.reason)}</div>` : '';
+  const desc = skill.description || '';
+  const hasDesc = desc.trim() && desc !== '—';
+  const isZh = /[\u4e00-\u9fff]/.test(desc);
+  const tBtn = hasDesc ? translateButtonHtml(isZh ? 'en' : 'zh') : '';
+  const descHtml = hasDesc
+    ? `<div class="translatable-wrap"><div class="translatable-text">${escHtml(desc)}</div>${tBtn}</div>`
+    : escHtml(desc || '—');
+  const catIcon = CATEGORY_ICONS[skill.category] || '';
+  const catLabel = skill.categoryLabel || skill.category || '';
+  const catBadge = catLabel ? `<span class="card-badge" style="background:#1a1a2e;color:#8888aa;border:1px solid #333;font-size:9px">${catIcon} ${escHtml(catLabel)}</span>` : '';
+  return `
+  <div class="skill-card" title="点击查看此 Skill — ${escHtml(skill.filePath||'')}" onclick="onSkillCardClick(event, '${escAttr(skill.id)}', '${escAttr(skill.name)}')">
+    <div class="card-top"><div class="card-name">${escHtml(skill.name)}</div><div style="display:flex;gap:4px;align-items:center">${catBadge}<span class="card-badge ${bc}">${skill.source}</span></div></div>
+    <div class="card-desc">${descHtml}</div>
+    ${triggers ? `<div class="card-triggers">${triggers}</div>` : ''}
+    ${reasonHtml}
+    <div class="card-score-bar"><div class="card-score-fill" style="width:${pct}%"></div></div>
+    <div class="card-score-label">score: <span>${skill.score}</span></div>
+  </div>`;
+}
+
+// ── Skill viewer modal ─────────────────────────────────────────────────────────
+let currentSkillView = null;
+
+let pendingSkillView = null;
+
+function onSkillCardClick(event, id, name) {
+  // Ignore clicks on interactive children (e.g. the translate button).
+  if (event.target.closest('.translate-btn')) return;
+  openSkillChooser(id, name);
+}
+
+// ── View chooser ──
+function openSkillChooser(id, name) {
+  pendingSkillView = { id, name: name || (id || '').split('/').pop() };
+  document.getElementById('chooserTitle').textContent = `查看「${pendingSkillView.name}」`;
+  document.getElementById('skillChooserModal').classList.add('active');
+}
+function closeSkillChooser() {
+  document.getElementById('skillChooserModal').classList.remove('active');
+}
+function chooseView(mode) {
+  if (!pendingSkillView) return;
+  const { id, name } = pendingSkillView;
+  closeSkillChooser();
+  if (mode === 'md') openSkillViewer(id);
+  else openVizViewer(id, name);
+}
+
+// ── Skill visualization (skill-visualizer 学习导览) ──
+let vizCurrent = null;       // { id, name }
+let vizPollTimer = null;
+
+function openVizViewer(id, name) {
+  vizCurrent = { id, name: name || (id || '').split('/').pop() };
+  document.getElementById('vizTitle').textContent = `${vizCurrent.name} — Skill 学习导览`;
+  document.getElementById('vizModal').classList.add('active');
+  pollViz(true);
+}
+
+function closeViz() {
+  document.getElementById('vizModal').classList.remove('active');
+  if (vizPollTimer) { clearTimeout(vizPollTimer); vizPollTimer = null; }
+  document.getElementById('vizBody').innerHTML = '';
+  vizCurrent = null;
+}
+
+function renderVizWait(st) {
+  let title = '正在生成 Skill 学习导览…';
+  let sub = '首次生成需要调用 AI 分析整个 Skill，通常 1-3 分钟，请稍候。生成完成后会自动显示。';
+  if (st.status === 'queued') {
+    title = '已加入生成队列，等待中…';
+    const pos = st.queuePos > 0 ? `队列位置 ${st.queuePos}/${st.queueTotal}` : '即将开始';
+    sub = `后台正在逐个生成各 Skill 的学习导览（${pos}，正在生成 ${st.active} 个）。已为你提到队首优先处理。`;
+  } else if (st.status === 'generating') {
+    title = '正在生成中…';
+  }
+  return `<div class="viz-wait">
+    <div class="icon">🎨</div>
+    <div class="viz-wait-title">${escHtml(title)}</div>
+    <div class="viz-wait-bar"><div class="viz-wait-bar-fill"></div></div>
+    <div class="viz-wait-sub">${escHtml(sub)}</div>
+  </div>`;
+}
+
+function renderVizError(st) {
+  const reason = st.disabledReason || st.error || '未知错误';
+  return `<div class="viz-wait">
+    <div class="icon">⚠️</div>
+    <div class="viz-wait-title viz-err">生成失败</div>
+    <div class="viz-wait-sub">${escHtml(reason)}</div>
+    <button class="sv-action-btn" onclick="regenerateViz()">🔄 重试</button>
+  </div>`;
+}
+
+async function pollViz(immediate) {
+  if (!vizCurrent) return;
+  const { id } = vizCurrent;
+  const body = document.getElementById('vizBody');
+  if (immediate) body.innerHTML = renderVizWait({ status: 'queued', queuePos: 0, queueTotal: 0, active: 0 });
+  try {
+    const st = await fetch(`${API}/api/skill/visualization?id=${encodeURIComponent(id)}`).then(r => r.json());
+    if (!vizCurrent || vizCurrent.id !== id) return; // modal closed/switched
+    if (st.error && st.status === 'error') {
+      body.innerHTML = renderVizError(st);
+      return;
+    }
+    if (st.ready && st.htmlUrl) {
+      body.innerHTML = `<iframe class="viz-frame" src="${API}${st.htmlUrl}" title="Skill 学习导览"></iframe>`;
+      return;
+    }
+    body.innerHTML = renderVizWait(st);
+    vizPollTimer = setTimeout(() => pollViz(false), 2500);
+  } catch (e) {
+    body.innerHTML = `<div class="viz-wait"><div class="icon">⚠️</div><div class="viz-wait-title viz-err">无法获取生成状态</div><div class="viz-wait-sub">${escHtml(e.message)}</div></div>`;
+  }
+}
+
+async function regenerateViz() {
+  if (!vizCurrent) return;
+  const { id } = vizCurrent;
+  const body = document.getElementById('vizBody');
+  body.innerHTML = renderVizWait({ status: 'generating' });
+  try {
+    const r = await fetch(`${API}/api/skill/visualization/regenerate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
+    }).then(r => r.json());
+    if (r.error) { showToast('无法重新生成：' + r.error, 'error'); }
+  } catch (e) { showToast('重新生成失败：' + e.message, 'error'); }
+  pollViz(false);
+}
+
+function openVizNewTab() {
+  if (!vizCurrent) return;
+  window.open(`${API}/api/skill/visualization/html?id=${encodeURIComponent(vizCurrent.id)}`, '_blank');
+}
+
+async function openSkillViewer(id) {
+  const modal = document.getElementById('skillViewerModal');
+  const body = document.getElementById('skillViewerBody');
+  const pathEl = document.getElementById('skillViewerPath');
+  modal.classList.add('active');
+  document.getElementById('skillViewerTitle').textContent = 'Loading…';
+  pathEl.textContent = '';
+  body.innerHTML = '<div class="loading" style="padding:40px;color:#888"><div class="spinner"></div> 正在读取 SKILL.md…</div>';
+  currentSkillView = null;
+  try {
+    const data = await fetch(`${API}/api/skill/content?id=${encodeURIComponent(id)}`).then(r => r.json());
+    if (data.error) {
+      body.innerHTML = `<div class="empty-state" style="padding:40px"><div class="icon">⚠️</div><p>${escHtml(data.error)}</p></div>`;
+      return;
+    }
+    currentSkillView = data;
+    document.getElementById('skillViewerTitle').innerHTML =
+      `${escHtml(data.name)} <span class="card-badge ${getBadgeClass(data.source)}" style="font-size:9px;margin-left:6px">${escHtml(data.source)}</span>`;
+    pathEl.textContent = data.filePath || '';
+    body.innerHTML = `<div class="md-body">${renderMarkdown(data.content || '')}</div>`;
+  } catch (e) {
+    body.innerHTML = `<div class="empty-state" style="padding:40px"><div class="icon">⚠️</div><p>加载失败：${escHtml(e.message)}</p></div>`;
+  }
+}
+
+function closeSkillViewer() {
+  document.getElementById('skillViewerModal').classList.remove('active');
+  currentSkillView = null;
+}
+
+function copySkillViewerPath(btn) {
+  if (!currentSkillView || !currentSkillView.filePath) return;
+  copyToClipboard(currentSkillView.filePath, btn);
+}
+
+async function openSkillFileInEditor() {
+  if (!currentSkillView || !currentSkillView.id) return;
+  try {
+    const r = await fetch(`${API}/api/skill/open`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: currentSkillView.id }),
+    }).then(r => r.json());
+    if (r.error) showToast('打开失败：' + r.error, 'error');
+    else showToast('已在系统编辑器中打开', 'success');
+  } catch (e) {
+    showToast('打开失败：' + e.message, 'error');
+  }
+}
+
+// Lightweight, dependency-free Markdown → HTML renderer (handles the subset used in SKILL.md).
+function renderMarkdown(md) {
+  const esc = s => escHtml(s);
+  // Extract fenced code blocks first so their contents are not processed further.
+  const codeBlocks = [];
+  md = md.replace(/```([^\n`]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const i = codeBlocks.push(`<pre><code>${esc(code.replace(/\n$/, ''))}</code></pre>`) - 1;
+    return `\u0000CB${i}\u0000`;
+  });
+
+  const lines = md.split('\n');
+  let html = '';
+  let listType = null; // 'ul' | 'ol'
+  const closeList = () => { if (listType) { html += `</${listType}>`; listType = null; } };
+
+  const inline = (t) => {
+    t = esc(t);
+    t = t.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, txt, url) =>
+      `<a href="${url}" target="_blank" rel="noopener">${txt}</a>`);
+    return t;
+  };
+
+  for (let raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    const cb = line.match(/^\u0000CB(\d+)\u0000$/);
+    if (cb) { closeList(); html += codeBlocks[+cb[1]]; continue; }
+    if (!line.trim()) { closeList(); continue; }
+    let m;
+    if ((m = line.match(/^(#{1,6})\s+(.*)$/))) {
+      closeList();
+      const lvl = Math.min(m[1].length, 3);
+      html += `<h${lvl}>${inline(m[2])}</h${lvl}>`;
+    } else if (/^(---|\*\*\*|___)\s*$/.test(line)) {
+      closeList(); html += '<hr>';
+    } else if ((m = line.match(/^>\s?(.*)$/))) {
+      closeList(); html += `<blockquote>${inline(m[1])}</blockquote>`;
+    } else if ((m = line.match(/^\s*[-*+]\s+(.*)$/))) {
+      if (listType !== 'ul') { closeList(); html += '<ul>'; listType = 'ul'; }
+      html += `<li>${inline(m[1])}</li>`;
+    } else if ((m = line.match(/^\s*\d+\.\s+(.*)$/))) {
+      if (listType !== 'ol') { closeList(); html += '<ol>'; listType = 'ol'; }
+      html += `<li>${inline(m[1])}</li>`;
+    } else {
+      closeList(); html += `<p>${inline(line)}</p>`;
+    }
+  }
+  closeList();
+  return html;
+}
+
+// ── Conflicts ─────────────────────────────────────────────────────────────────
+function loadConflicts() {
+  const container = document.getElementById('conflictContainer');
+  const summary = document.getElementById('conflictSummary');
+  summary.innerHTML = '';
+  container.innerHTML = `
+    <div class="conflict-progress">
+      <div class="conflict-progress-title">Analyzing skill conflicts...</div>
+      <div class="conflict-progress-bar"><div class="conflict-progress-fill" id="conflictFill"></div></div>
+      <div class="conflict-progress-detail">
+        <span id="conflictStage">Initializing...</span>
+        <span id="conflictPct">0%</span>
+      </div>
+    </div>`;
+
+  const es = new EventSource(`${API}/api/conflicts/stream?threshold=0.15`);
+  const fill = () => document.getElementById('conflictFill');
+  const stage = () => document.getElementById('conflictStage');
+  const pct = () => document.getElementById('conflictPct');
+
+  es.onmessage = (ev) => {
+    const d = JSON.parse(ev.data);
+    if (d.type === 'start') {
+      stage().textContent = `Indexing ${d.total} skills...`;
+    } else if (d.type === 'indexed') {
+      stage().textContent = `Indexed ${d.total} skills, comparing pairs...`;
+      fill().style.width = '5%';
+      pct().textContent = '5%';
+    } else if (d.type === 'progress') {
+      const p = Math.min(5 + d.pct * 0.95, 100);
+      fill().style.width = p + '%';
+      pct().textContent = Math.round(p) + '%';
+      stage().textContent = `Checked ${d.checked.toLocaleString()} / ${d.totalPairs.toLocaleString()} pairs — found ${d.found} conflicts`;
+    } else if (d.type === 'done') {
+      es.close();
+      allConflicts = d.conflicts;
+      document.getElementById('conflictBadge').textContent = allConflicts.length;
+      populateSourceChips();
+      renderConflicts();
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>无法连接到服务器</p></div>';
+  };
+}
+
+let conflictSortDir = 'desc';
+
+function toggleAll(filterName) {
+  const cbs = document.querySelectorAll(`input[data-filter="${filterName}"]`);
+  const allChecked = [...cbs].every(c => c.checked);
+  cbs.forEach(c => { c.checked = !allChecked; });
+  renderConflicts();
+}
+
+function toggleSort() {
+  conflictSortDir = conflictSortDir === 'desc' ? 'asc' : 'desc';
+  document.getElementById('sortBtn').textContent = conflictSortDir === 'desc' ? '相似度 ↓' : '相似度 ↑';
+  renderConflicts();
+}
+
+function getCheckedValues(filterName) {
+  return [...document.querySelectorAll(`input[data-filter="${filterName}"]:checked`)].map(c => c.value);
+}
+
+function populateSourceChips() {
+  const container = document.getElementById('sourceFilterChips');
+  if (!container) return;
+  const prev = {};
+  container.querySelectorAll('input[data-filter="source"]').forEach(cb => { prev[cb.value] = cb.checked; });
+  const sources = new Set();
+  for (const c of allConflicts) { sources.add(c.skillA.source); sources.add(c.skillB.source); }
+  const sorted = [...sources].filter(Boolean).sort();
+  if (!sorted.length) { container.innerHTML = ''; return; }
+  container.innerHTML = sorted.map(src => {
+    const checked = prev[src] === undefined ? true : prev[src];
+    return `<label class="filter-chip"><input type="checkbox" data-filter="source" value="${escAttr(src)}" ${checked ? 'checked' : ''} onchange="renderConflicts()"> ${escHtml(src)}</label>`;
+  }).join('');
+}
+
+function renderConflicts() {
+  const severities = new Set(getCheckedValues('severity'));
+  const sources = new Set(getCheckedValues('source'));
+  const relation = (document.querySelector('input[name="relation"]:checked') || {}).value || 'all';
+
+  let list = allConflicts.filter(c => {
+    if (!severities.has(c.severity)) return false;
+    if (!sources.has(c.skillA.source) || !sources.has(c.skillB.source)) return false;
+    if (relation === 'cross' && c.skillA.source === c.skillB.source) return false;
+    if (relation === 'same' && c.skillA.source !== c.skillB.source) return false;
+    if (relation === 'samecat' && c.skillA.category !== c.skillB.category) return false;
+    return true;
+  });
+
+  list = [...list].sort((a, b) => conflictSortDir === 'desc'
+    ? b.similarity - a.similarity
+    : a.similarity - b.similarity);
+
+  const high = list.filter(c => c.severity==='high').length;
+  const med = list.filter(c => c.severity==='medium').length;
+  const low = list.filter(c => c.severity==='low').length;
+  const totalHigh = allConflicts.filter(c => c.severity==='high').length;
+  const totalMed = allConflicts.filter(c => c.severity==='medium').length;
+  const totalLow = allConflicts.filter(c => c.severity==='low').length;
+  const sameCatTotal = allConflicts.filter(c => c.skillA.category === c.skillB.category).length;
+
+  document.getElementById('conflictSummary').innerHTML = `
+    <div class="conflict-stat"><div class="num num-high">${high}<span style="font-size:12px;color:#555;font-weight:400"> / ${totalHigh}</span></div><div class="lbl">高危</div></div>
+    <div class="conflict-stat"><div class="num num-med">${med}<span style="font-size:12px;color:#555;font-weight:400"> / ${totalMed}</span></div><div class="lbl">中等</div></div>
+    <div class="conflict-stat"><div class="num num-low">${low}<span style="font-size:12px;color:#555;font-weight:400"> / ${totalLow}</span></div><div class="lbl">低危</div></div>
+    <div class="conflict-stat" title="属于同一功能分类的冲突，AI agent 最容易混淆，最值得优先修复"><div class="num" style="color:#7b9eff">${sameCatTotal}</div><div class="lbl">🎯 同类冲突</div></div>
+    <div class="conflict-stat"><div class="num" style="color:#ddd">${list.length}<span style="font-size:12px;color:#555;font-weight:400"> / ${allConflicts.length}</span></div><div class="lbl">显示 / 总计</div></div>`;
+
+  if (!list.length) { document.getElementById('conflictContainer').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>当前筛选条件下无冲突</p></div>'; return; }
+
+  document.getElementById('conflictContainer').innerHTML = `<div class="conflict-list">${list.map(renderConflictCard).join('')}</div>`;
+}
+
+function renderConflictCard(c) {
+  const simClass = c.severity === 'high' ? 'sim-high' : c.severity === 'medium' ? 'sim-med' : 'sim-low';
+  const crossTag = c.skillA.source !== c.skillB.source ? `<span style="font-size:10px;padding:2px 7px;background:#2a1a14;color:#ff9060;border-radius:4px;font-weight:600">跨来源</span>` : '';
+  const sameCat = c.skillA.category && c.skillA.category === c.skillB.category;
+  const catIcon = CATEGORY_ICONS[c.skillA.category] || '';
+  const sameCatTag = sameCat
+    ? `<span style="font-size:10px;padding:2px 7px;background:#16203a;color:#7b9eff;border-radius:4px;font-weight:600" title="同一功能分类——AI agent 最易混淆">${catIcon} 同类 ${escHtml(c.skillA.categoryLabel || c.skillA.category)}</span>`
+    : '';
+  const overlapTags = (c.sharedTriggers||[]).map(t => `<span class="overlap-tag">${escHtml(t.slice(0,30))}</span>`).join('');
+  const fileA = renderConflictFileBox(c.skillA, c.newerSide === 'A');
+  const fileB = renderConflictFileBox(c.skillB, c.newerSide === 'B');
+  const safeIdA = escAttr(c.skillA.id);
+  const safeIdB = escAttr(c.skillB.id);
+  return `
+  <div class="conflict-card ${c.severity}">
+    <div class="conflict-header">
+      <div class="conflict-skills">
+        <span class="conflict-skill-name">${escHtml(c.skillA.name)}</span><span class="card-badge ${getBadgeClass(c.skillA.source)}" style="font-size:9px">${c.skillA.source}</span>
+        <span class="conflict-vs">vs</span>
+        <span class="conflict-skill-name">${escHtml(c.skillB.name)}</span><span class="card-badge ${getBadgeClass(c.skillB.source)}" style="font-size:9px">${c.skillB.source}</span>
+        ${sameCatTag}
+        ${crossTag}
+      </div>
+      <span class="conflict-sim ${simClass}">相似度 ${c.similarity}</span>
+    </div>
+    <div class="conflict-body">
+      <div class="conflict-files">${fileA}${fileB}</div>
+      ${overlapTags ? `<div class="conflict-overlap"><span class="conflict-overlap-label">重叠触发词：</span>${overlapTags}</div>` : ''}
+      <div class="conflict-fix">${escHtml(c.fix)}</div>
+      <div class="conflict-actions">
+        <button class="btn-compare" onclick="openCompare('${safeIdA}','${safeIdB}')">⇔ 对比内容</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderConflictFileBox(skill, isNewer) {
+  const tag = isNewer
+    ? '<span class="conflict-file-newer-tag">较新</span>'
+    : '<span class="conflict-file-older-tag">较旧</span>';
+  const date = skill.mtimeISO ? new Date(skill.mtimeISO).toLocaleString('zh-CN', { hour12: false }) : '—';
+  const sizeKb = skill.size != null ? (skill.size / 1024).toFixed(1) + ' KB' : '—';
+  return `
+    <div class="conflict-file ${isNewer ? 'newer' : ''}">
+      <div class="conflict-file-head">
+        <span class="conflict-file-name">${escHtml(skill.name)}</span>
+        <span class="card-badge ${getBadgeClass(skill.source)}" style="font-size:9px">${skill.source}</span>
+        ${tag}
+      </div>
+      <div class="conflict-file-path" title="${escHtml(skill.filePath||'')}">${escHtml(skill.filePath||'(unknown path)')}</div>
+      <div class="conflict-file-meta">
+        <span>mtime: ${escHtml(date)}</span>
+        <span>size: ${sizeKb}</span>
+      </div>
+    </div>`;
+}
+
+function escAttr(s) { return String(s||'').replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+
+// ── Compare modal ─────────────────────────────────────────────────────────────
+let compareCache = { a: null, b: null, view: 'diff' };
+
+async function openCompare(idA, idB) {
+  const modal = document.getElementById('compareModal');
+  const body = document.getElementById('compareBody');
+  modal.classList.add('active');
+  body.innerHTML = '<div class="loading" style="padding:40px;color:#888"><div class="spinner"></div> Loading file contents…</div>';
+  document.getElementById('compareTitle').textContent = 'Loading...';
+  try {
+    const [a, b] = await Promise.all([
+      fetch(`${API}/api/skill/content?id=${encodeURIComponent(idA)}`).then(r => r.json()),
+      fetch(`${API}/api/skill/content?id=${encodeURIComponent(idB)}`).then(r => r.json()),
+    ]);
+    if (a.error || b.error) {
+      body.innerHTML = `<div class="empty-state" style="grid-column:span 2;padding:40px"><div class="icon">⚠️</div><p>${escHtml(a.error || b.error)}</p></div>`;
+      return;
+    }
+    compareCache = { a, b, view: compareCache.view };
+    document.getElementById('compareTitle').textContent = `${a.name} (${a.source}) ⇔ ${b.name} (${b.source})`;
+    renderCompareView();
+  } catch (e) {
+    body.innerHTML = `<div class="empty-state" style="grid-column:span 2;padding:40px"><div class="icon">⚠️</div><p>Failed to load: ${escHtml(e.message)}</p></div>`;
+  }
+}
+
+function closeCompare() {
+  document.getElementById('compareModal').classList.remove('active');
+  document.getElementById('tab-diff').style.display = '';
+  document.getElementById('tab-side').style.display = '';
+}
+
+function setCompareView(view) {
+  compareCache.view = view;
+  document.getElementById('tab-diff').classList.toggle('active', view === 'diff');
+  document.getElementById('tab-side').classList.toggle('active', view === 'side');
+  renderCompareView();
+}
+
+function renderCompareView() {
+  const { a, b, view } = compareCache;
+  if (!a || !b) return;
+  const body = document.getElementById('compareBody');
+  const wrap = document.getElementById('compareWrap');
+  const headerA = buildPaneHeader(a, a.mtime >= b.mtime);
+  const headerB = buildPaneHeader(b, b.mtime > a.mtime);
+  let leftContent, rightContent;
+  let summary = '';
+  if (view === 'diff') {
+    const diff = computeLineDiff(a.content || '', b.content || '');
+    const adds = diff.right.filter(l => l.type === 'add').length;
+    const dels = diff.left.filter(l => l.type === 'del').length;
+    const sameLines = diff.left.filter(l => l.type === 'same' && l.text).length;
+    const identical = (adds === 0 && dels === 0 && (a.content || '') === (b.content || ''));
+    if (identical) {
+      summary = `<div class="diff-summary-banner identical">
+        <strong>✓ 两个文件内容完全相同</strong>
+        <span>(${sameLines} 行)</span>
+        <span style="margin-left:auto;color:#666">建议：考虑删除其中一份，或在 description 中标注哪份是主版本</span>
+      </div>`;
+    } else {
+      summary = `<div class="diff-summary-banner">
+        <strong>差异统计</strong>
+        <span style="color:#ff7070">- ${dels} 行删除</span>
+        <span style="color:#7aff8a">+ ${adds} 行新增</span>
+        <span style="color:#666">${sameLines} 行相同</span>
+        <div class="diff-legend" style="margin-left:auto">
+          <div class="diff-legend-item"><span class="diff-legend-swatch del"></span>左侧独有 / 已删除</div>
+          <div class="diff-legend-item"><span class="diff-legend-swatch add"></span>右侧独有 / 新增</div>
+        </div>
+      </div>`;
+    }
+    leftContent = diff.left.map(l => {
+      const cls = l.type === 'same' && !l.text ? 'empty' : l.type;
+      return `<span class="diff-line ${cls}">${escHtml(l.text || ' ')}</span>`;
+    }).join('');
+    rightContent = diff.right.map(l => {
+      const cls = l.type === 'same' && !l.text ? 'empty' : l.type;
+      return `<span class="diff-line ${cls}">${escHtml(l.text || ' ')}</span>`;
+    }).join('');
+  } else {
+    const aLines = (a.content || '').split('\n').length;
+    const bLines = (b.content || '').split('\n').length;
+    summary = `<div class="diff-summary-banner">
+      <strong>Side-by-side 视图</strong>
+      <span>左侧: ${aLines} 行 / ${(a.size/1024).toFixed(1)} KB</span>
+      <span>右侧: ${bLines} 行 / ${(b.size/1024).toFixed(1)} KB</span>
+    </div>`;
+    leftContent = (a.content || '').split('\n').map(line => `<span class="diff-line same">${escHtml(line || ' ')}</span>`).join('');
+    rightContent = (b.content || '').split('\n').map(line => `<span class="diff-line same">${escHtml(line || ' ')}</span>`).join('');
+  }
+  body.innerHTML = `
+    ${summary}
+    <div class="diff-grid">
+      <div class="diff-pane">
+        ${headerA}
+        <div class="diff-pane-body">${leftContent}</div>
+      </div>
+      <div class="diff-pane">
+        ${headerB}
+        <div class="diff-pane-body">${rightContent}</div>
+      </div>
+    </div>`;
+}
+
+function buildPaneHeader(s, isNewer) {
+  const tag = isNewer
+    ? '<span class="conflict-file-newer-tag">较新</span>'
+    : '<span class="conflict-file-older-tag">较旧</span>';
+  const date = s.mtimeISO ? new Date(s.mtimeISO).toLocaleString('zh-CN', { hour12: false }) : '—';
+  const sizeKb = s.size != null ? (s.size / 1024).toFixed(1) + ' KB' : '—';
+  const safeId = escAttr(s.id);
+  const safeName = escAttr(s.name);
+  const safePath = escAttr(s.filePath || '');
+  return `
+    <div class="diff-pane-header">
+      <div class="diff-pane-title">
+        <span>${escHtml(s.name)}</span>
+        <span class="card-badge ${getBadgeClass(s.source)}" style="font-size:9px">${s.source}</span>
+        ${tag}
+      </div>
+      <div class="diff-pane-path">${escHtml(s.filePath || '')}</div>
+      <div class="diff-pane-meta">
+        <span>mtime: ${escHtml(date)}</span>
+        <span>size: ${sizeKb}</span>
+        <span>lines: ${(s.content||'').split('\n').length}</span>
+      </div>
+      <div class="diff-pane-actions">
+        <button class="btn-delete-skill" onclick="askDeleteSkill('${safeId}','${safeName}','${safePath}')">🗑️ 删除此 Skill</button>
+      </div>
+    </div>`;
+}
+
+// LCS-based line diff. Returns aligned arrays for left/right panes.
+function computeLineDiff(textA, textB) {
+  const a = textA.split('\n');
+  const b = textB.split('\n');
+  const m = a.length, n = b.length;
+  // Build LCS table (cap to avoid blowing memory on huge files)
+  const MAX = 1500;
+  const aT = a.slice(0, MAX);
+  const bT = b.slice(0, MAX);
+  const M = aT.length, N = bT.length;
+  const dp = Array.from({ length: M + 1 }, () => new Uint16Array(N + 1));
+  for (let i = M - 1; i >= 0; i--) {
+    for (let j = N - 1; j >= 0; j--) {
+      if (aT[i] === bT[j]) dp[i][j] = dp[i+1][j+1] + 1;
+      else dp[i][j] = Math.max(dp[i+1][j], dp[i][j+1]);
+    }
+  }
+  const left = [], right = [];
+  let i = 0, j = 0;
+  while (i < M && j < N) {
+    if (aT[i] === bT[j]) {
+      left.push({ type: 'same', text: aT[i] });
+      right.push({ type: 'same', text: bT[j] });
+      i++; j++;
+    } else if (dp[i+1][j] >= dp[i][j+1]) {
+      left.push({ type: 'del', text: aT[i] });
+      right.push({ type: 'same', text: '' });
+      i++;
+    } else {
+      left.push({ type: 'same', text: '' });
+      right.push({ type: 'add', text: bT[j] });
+      j++;
+    }
+  }
+  while (i < M) { left.push({ type: 'del', text: aT[i++] }); right.push({ type: 'same', text: '' }); }
+  while (j < N) { left.push({ type: 'same', text: '' }); right.push({ type: 'add', text: bT[j++] }); }
+  if (m > MAX || n > MAX) {
+    left.push({ type: 'same', text: `… (truncated, file has ${m} lines)` });
+    right.push({ type: 'same', text: `… (truncated, file has ${n} lines)` });
+  }
+  return { left, right };
+}
+
+// ── Delete skill flow ─────────────────────────────────────────────────────────
+let pendingDelete = null;
+
+function askDeleteSkill(id, name, filePath) {
+  pendingDelete = { id, name, filePath };
+  document.getElementById('confirmBody').innerHTML = `
+    <div>即将永久删除以下 Skill 文件：</div>
+    <div style="margin-top:10px"><strong style="color:#fff">${escHtml(name)}</strong></div>
+    <code>${escHtml(filePath)}</code>
+    <div class="confirm-warning">
+      <span>⚠️</span>
+      <span>此操作不可撤销！文件会被永久删除。若目录变空也会被一并删除。</span>
+    </div>
+    <div style="margin-top:14px;color:#999;font-size:12px">请输入 Skill 名称 <code style="display:inline;padding:1px 5px;margin:0">${escHtml(name)}</code> 以确认：</div>
+    <input class="confirm-input" id="confirmInput" placeholder="输入 Skill 名称..." oninput="checkConfirmInput()" autocomplete="off"/>
+  `;
+  document.getElementById('confirmDeleteBtn').disabled = true;
+  document.getElementById('confirmDialog').classList.add('active');
+  setTimeout(() => document.getElementById('confirmInput').focus(), 50);
+}
+
+function checkConfirmInput() {
+  const inp = document.getElementById('confirmInput');
+  document.getElementById('confirmDeleteBtn').disabled = !pendingDelete || inp.value.trim() !== pendingDelete.name;
+}
+
+function closeConfirm() {
+  document.getElementById('confirmDialog').classList.remove('active');
+  pendingDelete = null;
+}
+
+async function executeDelete() {
+  if (!pendingDelete) return;
+  const { id, name } = pendingDelete;
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.disabled = true;
+  btn.textContent = '删除中...';
+  try {
+    const res = await fetch(`${API}/api/skill?id=${encodeURIComponent(id)}&confirm=yes`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(`删除失败: ${data.error || res.statusText}`, 'error');
+      btn.disabled = false;
+      btn.textContent = '永久删除';
+      return;
+    }
+    showToast(`已删除 "${name}"${data.removedEmptyDir ? '（含空目录）' : ''}`);
+    closeConfirm();
+    closeCompare();
+    loadConflicts();
+    try {
+      const sk = await fetch(`${API}/api/skills`).then(r => r.json());
+      renderSidebar(sk);
+      const st = await fetch(`${API}/api/stats`).then(r => r.json());
+      renderStats(st);
+    } catch {}
+  } catch (e) {
+    showToast(`删除失败: ${e.message}`, 'error');
+    btn.disabled = false;
+    btn.textContent = '永久删除';
+  }
+}
+
+function showToast(msg, type) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (type === 'error' ? ' error' : '');
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; }, 3000);
+  setTimeout(() => toast.remove(), 3400);
+}
+
+// ESC to close modal
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('confirmDialog').classList.contains('active')) closeConfirm();
+  else if (document.getElementById('skillChooserModal').classList.contains('active')) closeSkillChooser();
+  else if (document.getElementById('vizModal').classList.contains('active')) closeViz();
+  else if (document.getElementById('skillViewerModal').classList.contains('active')) closeSkillViewer();
+  else if (document.getElementById('inspectorModal').classList.contains('active')) closeInspector();
+  else closeCompare();
+});
+
+// ── MCP ───────────────────────────────────────────────────────────────────────
+async function loadMcpServers() {
+  const container = document.getElementById('mcpServersContainer');
+  try {
+    const res = await fetch(`${API}/api/mcp/servers`);
+    const servers = await res.json();
+    container.dataset.loaded = '1';
+
+    // Render sidebar
+    document.getElementById('sidebar-mcp-list').innerHTML = servers.map(s => {
+      const tooltip = `${s.name}\nSource: ${s.source}\nTools: ${s.toolCount}\nResources: ${s.resourceCount || 0}\nConfig: ${s.configFile || '(no config file)'}`;
+      const cntClr = s.toolCount > 10 ? '#80b0d0' : (s.toolCount > 0 ? '#80c080' : '#555');
+      return `
+      <div class="sidebar-item" onclick="scrollToServer('${escHtml(s.id)}')" title="${escAttr(tooltip)}">
+        <span class="dot ${s.toolCount > 10 ? 'blue' : (s.toolCount > 0 ? 'green' : '')}"></span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.name)}</span>
+        <span style="font-size:10px;color:${cntClr};background:#161618;padding:1px 6px;border-radius:8px" title="${s.toolCount} tools">${s.toolCount}</span>
+      </div>`;
+    }).join('');
+    const mcpCnt = document.getElementById('count-mcp');
+    if (mcpCnt) mcpCnt.textContent = servers.length;
+    const lbl = document.querySelector('#sidebar-mcp-panel .sidebar-label');
+    if (lbl) lbl.title = 'MCP server 数量';
+    applyCollapsedState();
+
+    // Load full details for each server
+    const fullServers = await Promise.all(servers.map(s =>
+      fetch(`${API}/api/mcp/server?id=${encodeURIComponent(s.id)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+        .catch(err => {
+          console.warn(`[MCP] Failed to load full details for "${s.id}":`, err);
+          return s; // fallback to lightweight server info from /api/mcp/servers
+        })
+    ));
+    container.innerHTML = fullServers.map(renderMcpServer).join('');
+  } catch (e) {
+    console.error('[MCP] loadMcpServers failed:', e);
+    container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>无法连接到服务器</p></div>';
+  }
+}
+
+function renderMcpServer(srv) {
+  const toolCards = (srv.tools || []).map(t => {
+    const params = (t.params || []).map(p =>
+      `<span class="param-tag ${p.required ? 'required' : ''}" title="${escHtml(p.description)}">${p.name}${p.required ? '*' : ''}</span>`
+    ).join('');
+    const lineTag = t.line ? `<span style="float:right;font-size:10px;color:#666">L${t.line}</span>` : '';
+    const descContent = t.description || '';
+    const descHasContent = descContent.trim().length > 0;
+    const isZh = /[\u4e00-\u9fff]/.test(descContent);
+    const translateBtn = descHasContent
+      ? translateButtonHtml(isZh ? 'en' : 'zh')
+      : '';
+    const descHtml = descHasContent
+      ? `<div class="translatable-wrap"><div class="translatable-text">${escHtml(descContent)}</div>${translateBtn}</div>`
+      : '<span style="color:#555;font-style:italic">(no docstring)</span>';
+    return `
+    <div class="mcp-tool-card">
+      <div class="mcp-tool-name">${escHtml(t.name)}${lineTag}</div>
+      <div class="mcp-tool-desc">${descHtml}</div>
+      ${params ? `<div class="mcp-tool-params">${params}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const transport = srv.transport || (srv.url ? 'http' : 'stdio');
+  const isHttp = transport === 'http';
+  const isDisabled = srv.enabled === false;
+  const iconClass = isDisabled ? 'disabled' : (isHttp ? 'http' : '');
+  const iconChar = isHttp ? '🌐' : (isDisabled ? '⛔' : '🔌');
+  const safeId = escAttr(srv.id);
+
+  const isStatic = srv.toolDiscoveryMethod === 'static-analysis';
+  const toolsTitle = isStatic
+    ? `${srv.toolCount} tools — 通过静态分析脚本 ${srv.scriptFile || ''} 提取`
+    : (srv.toolCount > 0 ? `${srv.toolCount} tools — Cursor 已缓存 schema` : '0 tools — server 未启动过，无 schema cache，请用 🔍 Debug 启动查看运行时工具');
+  const badges = [
+    srv.source ? `<span class="mcp-badge source" title="来源">${escHtml(srv.source)}</span>` : '',
+    `<span class="mcp-badge transport-${isHttp ? 'http' : 'stdio'}" title="传输协议">${transport}</span>`,
+    `<span class="mcp-badge tools" title="${escAttr(toolsTitle)}">${srv.toolCount || 0} tools${isStatic ? ' (static)' : ''}</span>`,
+    srv.resourceCount > 0 ? `<span class="mcp-badge resources" title="资源数">${srv.resourceCount} resources</span>` : '',
+    isDisabled ? '<span class="mcp-badge disabled" title="已禁用">disabled</span>' : (srv.enabled === true ? '<span class="mcp-badge enabled" title="已启用">enabled</span>' : ''),
+  ].filter(Boolean).join('');
+
+  const cfgRows = [];
+  if (srv.configFile) {
+    cfgRows.push(`
+      <div class="mcp-cfg-row">
+        <span class="mcp-cfg-label">Config</span>
+        <div class="mcp-cfg-value path" title="${escHtml(srv.configFile)}">${escHtml(srv.configFile)}</div>
+        <button class="mcp-cfg-copy" onclick="copyToClipboard('${escAttr(srv.configFile)}', this)">复制</button>
+      </div>`);
+  }
+  if (srv.url) {
+    cfgRows.push(`
+      <div class="mcp-cfg-row">
+        <span class="mcp-cfg-label">URL</span>
+        <div class="mcp-cfg-value url">${escHtml(srv.url)}</div>
+      </div>`);
+  }
+  if (srv.command) {
+    cfgRows.push(`
+      <div class="mcp-cfg-row">
+        <span class="mcp-cfg-label">Command</span>
+        <div class="mcp-cfg-value cmd">${escHtml(srv.command)}</div>
+      </div>`);
+  }
+  if (srv.scriptFile) {
+    cfgRows.push(`
+      <div class="mcp-cfg-row">
+        <span class="mcp-cfg-label">Script</span>
+        <div class="mcp-cfg-value path" title="${escHtml(srv.scriptFile)}">${escHtml(srv.scriptFile)}</div>
+        <button class="mcp-cfg-copy" onclick="copyToClipboard('${escAttr(srv.scriptFile)}', this)">复制</button>
+      </div>`);
+  }
+  if (srv.identifier && srv.identifier !== srv.name) {
+    cfgRows.push(`
+      <div class="mcp-cfg-row">
+        <span class="mcp-cfg-label">Identifier</span>
+        <div class="mcp-cfg-value">${escHtml(srv.identifier)}</div>
+      </div>`);
+  }
+  if (srv.description) {
+    cfgRows.push(`
+      <div class="mcp-cfg-row">
+        <span class="mcp-cfg-label">Desc</span>
+        <div class="mcp-cfg-value" style="color:#999">${escHtml(srv.description)}</div>
+      </div>`);
+  }
+
+  const sourceTag = isStatic
+    ? '<span style="margin-left:8px;font-size:10.5px;color:#d4a04a;background:#3a2a10;padding:2px 6px;border-radius:4px">静态分析</span>'
+    : (srv.toolCount > 0 ? '<span style="margin-left:8px;font-size:10.5px;color:#5a9;background:#0f2333;padding:2px 6px;border-radius:4px">Cursor 缓存 schema</span>' : '');
+  const toolsSection = (srv.tools && srv.tools.length)
+    ? `<div class="mcp-srv-section-title">Tools <span class="count">${srv.tools.length}</span>${sourceTag}</div>
+       ${isStatic ? '<div style="font-size:11px;color:#888;padding:4px 12px 8px">工具列表通过解析脚本中的 <code>@mcp.tool()</code> / <code>server.tool(...)</code> 等模式提取。如需详细参数 schema，请点 🔍 Debug 启动 Inspector 查看运行时数据。</div>' : ''}
+       <div class="mcp-tools-grid">${toolCards}</div>`
+    : '<div style="font-size:11.5px;color:#555;padding:8px 12px;background:#0a0a0c;border-radius:6px">未发现工具：通过 mcp.json 注册但脚本不在本地（HTTP MCP 或 uvx/npx 包），或脚本中没有匹配到工具注册 pattern。点 🔍 Debug 启动 Inspector 可查看运行时工具列表。</div>';
+
+  return `
+  <div class="mcp-server-card" id="mcp-srv-${escHtml(srv.id)}">
+    <div class="mcp-srv-header">
+      <div class="mcp-srv-icon ${iconClass}">${iconChar}</div>
+      <div class="mcp-srv-info">
+        <div class="mcp-srv-name">${escHtml(srv.name)}</div>
+        <div class="mcp-srv-badges">${badges}</div>
+      </div>
+      <div class="mcp-srv-actions">
+        <button onclick="openMcpConfig('${safeId}')" title="查看完整配置文件">⚙ 查看配置</button>
+        ${srv.source === 'cursor-project'
+          ? `<button disabled style="opacity:.45;cursor:not-allowed" title="IDE 管理的插件型 MCP 无 command/url，无法外部启动。工具信息已通过 Cursor schema 缓存获取。">🔌 IDE 插件 (无法外部调试)</button>`
+          : `<button onclick="probeMcpServer('${safeId}','${escAttr(srv.name)}')" title="直接 spawn 此 server 并发送 tools/list 拿运行时工具列表（推荐，比 Debug 稳）">📡 Probe</button>
+             <button class="primary" onclick="launchInspector('${safeId}','${escAttr(srv.name)}')" title="启动 MCP Inspector 调试此 server（Windows 路径有 bug 慎用）">🔍 Debug</button>`
+        }
+      </div>
+    </div>
+    ${cfgRows.length ? `<div class="mcp-srv-config">${cfgRows.join('')}</div>` : ''}
+    ${toolsSection}
+  </div>`;
+}
+
+async function openMcpConfig(id) {
+  const modal = document.getElementById('compareModal');
+  const body = document.getElementById('compareBody');
+  const title = document.getElementById('compareTitle');
+  document.getElementById('tab-diff').style.display = 'none';
+  document.getElementById('tab-side').style.display = 'none';
+  title.textContent = 'Loading MCP config...';
+  modal.classList.add('active');
+  body.innerHTML = '<div class="loading" style="padding:40px;color:#888"><div class="spinner"></div> Loading config file…</div>';
+  try {
+    const data = await fetch(`${API}/api/mcp/config?id=${encodeURIComponent(id)}`).then(r => r.json());
+    title.textContent = `MCP Config: ${data.name || id}`;
+    if (!data.exists || !data.content) {
+      body.innerHTML = `
+        <div style="padding:24px;color:#aaa">
+          <div style="margin-bottom:12px;color:#ff9080">⚠️ 配置文件不存在或无法读取</div>
+          <div style="background:#0a0a0c;border:1px solid #1d1d22;border-radius:6px;padding:12px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#bbb;white-space:pre-wrap;line-height:1.6">${escHtml(data.summary || JSON.stringify(data, null, 2))}</div>
+        </div>`;
+      return;
+    }
+    const ext = (data.configFile.split('.').pop() || '').toLowerCase();
+    const mtime = data.mtimeISO ? new Date(data.mtimeISO).toLocaleString('zh-CN', { hour12: false }) : '—';
+    const sizeKb = data.size != null ? (data.size / 1024).toFixed(1) + ' KB' : '—';
+    body.innerHTML = `
+      <div style="padding:14px 18px;background:#0f0f12;border-bottom:1px solid #1d1d22;flex-shrink:0;font-size:11.5px;color:#999">
+        <div style="font-family:ui-monospace,Consolas,monospace;color:#bbb;margin-bottom:6px;word-break:break-all">
+          ${escHtml(data.configFile)}
+          <button class="mcp-cfg-copy" onclick="copyToClipboard('${escAttr(data.configFile)}', this)" style="margin-left:8px">复制路径</button>
+        </div>
+        <div style="display:flex;gap:14px;color:#666;font-size:10.5px">
+          <span>type: ${escHtml(ext)}</span>
+          <span>size: ${sizeKb}</span>
+          <span>mtime: ${escHtml(mtime)}</span>
+        </div>
+      </div>
+      <div style="flex:1;overflow:auto;padding:14px 18px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.55;color:#cdd;white-space:pre-wrap;word-break:break-all;background:#0d0d10">${escHtml(data.content)}</div>`;
+  } catch (e) {
+    body.innerHTML = `<div style="padding:40px;text-align:center;color:#ff8080">Failed: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// ── MCP Probe (built-in, no Inspector needed) ────────────────────────────────
+async function probeMcpServer(id, name) {
+  const modal = document.getElementById('inspectorModal');
+  const titleEl = document.getElementById('inspectorTitle');
+  const body = document.getElementById('inspectorBody');
+  titleEl.textContent = `📡 MCP Probe: ${name}`;
+  body.innerHTML = `
+    <div class="insp-status loading">
+      <div class="spinner"></div>
+      <div>正在 spawn 子进程并发送 MCP <code>initialize</code> + <code>tools/list</code> 请求…</div>
+      <div style="font-size:11px;color:#888;margin-top:6px">最长等 15 秒</div>
+    </div>`;
+  modal.classList.add('active');
+
+  let r;
+  try {
+    const resp = await fetch(`${API}/api/mcp/probe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    r = await resp.json();
+  } catch (e) {
+    body.innerHTML = `<div class="insp-status err">网络错误: ${escHtml(e.message)}</div>`;
+    return;
+  }
+
+  if (!r.ok) {
+    body.innerHTML = `
+      <div class="insp-status err">
+        <strong>探测失败</strong>: ${escHtml(r.error || 'unknown')}
+        ${r.exitCode != null ? `<br><small>exit code: ${r.exitCode}</small>` : ''}
+      </div>
+      <div style="margin-top:12px">
+        <div style="font-size:11px;color:#888;margin-bottom:4px">尝试启动的命令</div>
+        <div style="font-family:monospace;font-size:12px;background:#0a0a0c;padding:8px;border-radius:4px;color:#a8a">${escHtml(r.command || '?')} ${(r.args || []).map(a => escHtml(a)).join(' ')}</div>
+      </div>
+      ${r.stderr ? `
+        <div style="margin-top:12px">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">stderr (last 2k)</div>
+          <pre style="font-family:monospace;font-size:11px;background:#0a0a0c;padding:8px;border-radius:4px;color:#c66;max-height:200px;overflow:auto;white-space:pre-wrap;margin:0">${escHtml(r.stderr)}</pre>
+        </div>` : ''}`;
+    return;
+  }
+
+  const tools = r.tools || [];
+  const toolCardsHtml = tools.length
+    ? tools.map(t => {
+        const params = t.inputSchema?.properties || {};
+        const required = new Set(t.inputSchema?.required || []);
+        const paramTags = Object.entries(params).map(([pname, pdef]) => {
+          const isReq = required.has(pname);
+          return `<span class="param-tag ${isReq ? 'required' : ''}" title="${escAttr(pdef.description || '')} (${pdef.type || 'any'})">${escHtml(pname)}${isReq ? '*' : ''}</span>`;
+        }).join('');
+        const desc = (t.description || '').slice(0, 400);
+        const isZh = /[\u4e00-\u9fff]/.test(desc);
+        const tBtn = desc.trim() ? translateButtonHtml(isZh ? 'en' : 'zh') : '';
+        const descHtml = desc.trim()
+          ? `<div class="translatable-wrap"><div class="translatable-text">${escHtml(desc)}</div>${tBtn}</div>`
+          : '<span style="color:#555;font-style:italic">(no docstring)</span>';
+        return `
+          <div class="mcp-tool-card">
+            <div class="mcp-tool-name">${escHtml(t.name)}</div>
+            <div class="mcp-tool-desc">${descHtml}</div>
+            ${paramTags ? `<div class="mcp-tool-params">${paramTags}</div>` : ''}
+          </div>`;
+      }).join('')
+    : '<div style="color:#888;padding:12px">Server is alive but registered no tools</div>';
+
+  const si = r.serverInfo || {};
+  const serverInfoHtml = r.serverInfo ? `
+    <div style="margin-top:12px;background:#0a0a0c;border:1px solid #222;border-radius:6px;padding:10px 12px">
+      <div style="font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">
+        Server self-report (MCP <code>initialize</code> 响应)
+      </div>
+      <div style="display:grid;grid-template-columns:90px 1fr;gap:6px 12px;font-size:12.5px">
+        <div style="color:#888">name</div>
+        <div style="font-family:monospace;color:#9cf"
+             title="MCP server 在自己代码中声明的标识名（例如 Python 里 FastMCP('xxx')）。不一定等于 mcp.json 里的 server id">
+          ${escHtml(si.name || '(empty)')}
+        </div>
+        <div style="color:#888">version</div>
+        <div style="font-family:monospace;color:#9cf"
+             title="MCP server 通过 serverInfo.version 字段返回的版本号。对 FastMCP / MCP SDK 写的 server，这通常是 SDK/框架版本，除非作者显式设置 server 自身版本">
+          ${escHtml(si.version || '(empty)')}
+          ${si.version ? `<span style="color:#666;font-size:10.5px;margin-left:8px;font-family:inherit">(多半是 MCP SDK 版本，不是脚本版本)</span>` : ''}
+        </div>
+      </div>
+    </div>` : '';
+
+  body.innerHTML = `
+    <div class="insp-status ready">
+      <strong>✅ Probe 成功</strong>
+      <span style="color:#888;margin-left:8px;font-size:12px">spawn 子进程 → MCP handshake → tools/list 完成</span>
+    </div>
+    ${serverInfoHtml}
+    <div style="margin:12px 0;padding:8px;background:#0f1a0f;border-left:3px solid #4a4;border-radius:4px;font-size:11.5px;color:#cfc">
+      💡 Probe 直接走 stdio JSON-RPC 拿运行时工具列表，比 Inspector 稳定。无 SSE、无 Windows 路径 bug、无并发崩溃。
+    </div>
+    <div>
+      <div style="font-size:11px;color:#888;margin-bottom:4px">已启动命令</div>
+      <div style="font-family:monospace;font-size:12px;background:#0a0a0c;padding:8px;border-radius:4px;color:#9c9">${escHtml(r.command)} ${r.args.map(a => escHtml(a)).join(' ')}</div>
+    </div>
+    <div class="mcp-srv-section-title" style="margin-top:16px">运行时工具 <span class="count">${tools.length}</span></div>
+    <div class="mcp-tools-grid">${toolCardsHtml}</div>`;
+}
+
+// ── MCP Inspector ─────────────────────────────────────────────────────────────
+let inspectorPollTimer = null;
+let inspectorActiveId = null;
+
+async function launchInspector(id, name) {
+  inspectorActiveId = id;
+  document.getElementById('inspectorTitle').textContent = `🔍 MCP Inspector: ${name}`;
+  const body = document.getElementById('inspectorBody');
+  body.innerHTML = `
+    <div class="insp-status loading">
+      <div class="spinner"></div>
+      <div>正在启动 <code style="color:#80a0d0">npx @modelcontextprotocol/inspector</code>...<br><small style="color:#666">首次启动会下载 inspector 包，可能需要 10-30 秒。</small></div>
+    </div>`;
+  document.getElementById('inspectorModal').classList.add('active');
+
+  try {
+    const res = await fetch(`${API}/api/mcp/inspect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    renderInspectorState(id, data);
+    if (data.ok && data.url) {
+      // 自动定时拉取最新日志
+      startInspectorPoll(id);
+    }
+  } catch (e) {
+    document.getElementById('inspectorBody').innerHTML =
+      `<div class="insp-status err">❌ 连接服务器失败: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderInspectorState(id, data) {
+  const body = document.getElementById('inspectorBody');
+  if (!data.ok) {
+    const hint = data.hint ? `<div style="margin-top:8px;font-size:11.5px;color:#aaa">${escHtml(data.hint)}</div>` : '';
+    body.innerHTML = `
+      <div class="insp-status err">
+        <span>❌</span>
+        <div>启动失败: ${escHtml(data.error || 'unknown')}${hint}</div>
+      </div>
+      ${data.logs ? `<div class="insp-logs-header"><span>启动日志</span></div><div class="insp-logs">${escHtml(data.logs)}</div>` : ''}
+      <div class="insp-actions">
+        <button class="btn-cancel" onclick="closeInspector()">关闭</button>
+      </div>`;
+    return;
+  }
+
+  const statusClass = data.alreadyRunning ? 'ready' : 'ready';
+  const statusText = data.alreadyRunning ? 'Inspector 已在运行' : 'Inspector 已启动';
+
+  body.innerHTML = `
+    <div class="insp-status ${statusClass}">
+      <span>✓</span>
+      <div><strong>${statusText}</strong>${data.pid ? ` <span style="color:#666">(PID ${data.pid})</span>` : ''}</div>
+    </div>
+    <div class="insp-url">
+      <div class="insp-url-text" id="inspUrlText">${escHtml(data.url)}</div>
+      <button class="btn-open-url" onclick="window.open('${escAttr(data.url)}','_blank')">🚀 打开 Inspector</button>
+      <button class="mcp-cfg-copy" onclick="copyToClipboard('${escAttr(data.url)}', this)">复制 URL</button>
+    </div>
+    <div style="background:#1a1a24;border:1px solid #2a2a40;border-radius:8px;padding:11px 14px;font-size:11.5px;color:#9d9dc0;line-height:1.6">
+      <div style="font-weight:700;color:#a89eff;margin-bottom:4px">⚠️ 接下来要做的</div>
+      Inspector 启动了，但还没连接 MCP server。打开 Inspector 后<strong style="color:#fff"> 点最下方的 ▷ Connect 按钮</strong>才会真正 spawn 子进程。
+      <br>如果 Connect 失败，看 Inspector 的弹窗错误，或在下方的子进程日志中查看 stderr。
+      <div style="margin-top:8px;padding:6px 8px;background:#3a1010;border-left:3px solid #c44;border-radius:4px;color:#fcc;font-size:11px">
+        🚨 <strong>避免并发：</strong>不要同时在多个浏览器 tab / 多个 server 上 Connect。Inspector 自身有 bug：当一个 SSE client 断开但 proxy 仍在向其发消息时会 <code>throw "Not connected"</code> 拖垮整个 proxy。建议：一次只 Debug 一个 server，用完点「停止 Inspector」再切下一个。
+      </div>
+    </div>
+    <div class="insp-row">
+      <label>启动方式</label>
+      <div class="insp-cmd value">${escHtml(data.describe || '')}</div>
+    </div>
+    <div class="insp-row">
+      <label>Web UI 端口</label>
+      <div class="value">${data.clientPort || '—'}</div>
+      <label style="min-width:auto">Proxy 端口</label>
+      <div class="value">${data.serverPort || '—'}</div>
+    </div>
+    <div class="insp-logs-header">
+      <span>子进程日志 <small style="color:#444;text-transform:none">(自动刷新)</small></span>
+      <span id="inspLogsTime" style="color:#444;font-weight:400;text-transform:none">${new Date().toLocaleTimeString()}</span>
+    </div>
+    <div class="insp-logs" id="inspLogs">${escHtml(data.logs || '(no logs yet)')}</div>
+    <div class="insp-actions">
+      <button class="btn-stop" onclick="stopInspector('${escAttr(id)}')">⏹ 停止 Inspector</button>
+      <button class="btn-cancel" onclick="closeInspector()" style="margin-left:auto">关闭面板（保持运行）</button>
+    </div>`;
+}
+
+function startInspectorPoll(id) {
+  stopInspectorPoll();
+  inspectorPollTimer = setInterval(async () => {
+    if (inspectorActiveId !== id) { stopInspectorPoll(); return; }
+    try {
+      const data = await fetch(`${API}/api/mcp/inspect/status?id=${encodeURIComponent(id)}`).then(r => r.json());
+      const logsEl = document.getElementById('inspLogs');
+      const timeEl = document.getElementById('inspLogsTime');
+      if (logsEl) logsEl.textContent = data.logs || '(no logs yet)';
+      if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+      if (data.exited) {
+        stopInspectorPoll();
+        const body = document.getElementById('inspectorBody');
+        if (body) {
+          body.querySelector('.insp-status').className = 'insp-status err';
+          body.querySelector('.insp-status').innerHTML =
+            `<span>⚠️</span><div>Inspector 进程已退出 (exit code: ${data.exitCode ?? 'n/a'})</div>`;
+        }
+      }
+    } catch (_) {}
+  }, 2000);
+}
+
+function stopInspectorPoll() {
+  if (inspectorPollTimer) { clearInterval(inspectorPollTimer); inspectorPollTimer = null; }
+}
+
+async function stopInspector(id) {
+  try {
+    await fetch(`${API}/api/mcp/inspect/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    showToast('Inspector 已停止');
+    stopInspectorPoll();
+    closeInspector();
+  } catch (e) {
+    showToast(`停止失败: ${e.message}`, 'error');
+  }
+}
+
+function closeInspector() {
+  document.getElementById('inspectorModal').classList.remove('active');
+  stopInspectorPoll();
+  inspectorActiveId = null;
+}
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ 已复制';
+    btn.style.color = '#7aff8a';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+  }).catch(() => {
+    showToast('复制失败，请手动选择', 'error');
+  });
+}
+
+async function doMcpSearch() {
+  const query = document.getElementById('mcpQueryInput').value.trim();
+  if (!query) return;
+  const container = document.getElementById('mcpSearchResults');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div> Searching tools…</div>';
+  try {
+    const res = await fetch(`${API}/api/mcp/search`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query}) });
+    const results = await res.json();
+    if (!results.length) { container.innerHTML = '<div class="empty-state"><div class="icon">🤷</div><p>No matching MCP tools found</p></div>'; return; }
+    const maxScore = results[0].score;
+    container.innerHTML = `<div class="results-grid">${results.map(t => {
+      const pct = maxScore > 0 ? Math.round((t.score / maxScore) * 100) : 0;
+      const isServer = t.resultType === 'server';
+      const typeBadge = isServer ? '<span class="badge-server-type">SERVER</span>' : '<span class="badge-tool-type">TOOL</span>';
+      const params = (t.params||[]).map(p => `<span class="param-tag ${p.required?'required':''}">${p.name}${p.required?'*':''}</span>`).join('');
+      const metaRow = isServer ? `<div class="server-meta-row">${
+        t.source ? `<span class="server-meta-tag">${escHtml(t.source)}</span>` : ''
+      }${t.toolCount != null ? `<span class="server-meta-tag">${t.toolCount} tools</span>` : ''
+      }${t.enabled === false ? '<span class="server-meta-tag" style="color:#ff6b4a">disabled</span>' : ''}</div>` : '';
+      return `
+      <div class="skill-card" ${isServer ? 'style="border-color:#1e2e1e"' : ''}>
+        <div class="card-top"><div class="card-name" style="font-family:monospace">${escHtml(t.name)}</div>${typeBadge}<span class="card-badge badge-cursor-builtin">${escHtml(t.server)}</span></div>
+        ${metaRow}
+        <div class="card-desc">${escHtml(t.description)}</div>
+        ${params ? `<div class="card-triggers">${params}</div>` : ''}
+        <div class="card-score-bar"><div class="card-score-fill" style="width:${pct}%"></div></div>
+        <div class="card-score-label">score: <span>${t.score}</span></div>
+      </div>`;
+    }).join('')}</div>`;
+  } catch { container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>无法连接到服务器</p></div>'; }
+}
+
+function scrollToServer(id) {
+  const el = document.getElementById(`mcp-srv-${id}`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setMcpQuery(q) { document.getElementById('mcpQueryInput').value = q; doMcpSearch(); }
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function getBadgeClass(src) {
+  return { 'cursor-builtin':'badge-cursor-builtin','cursor-skills':'badge-cursor-skills','claude-skills':'badge-claude-skills','gemini-projects':'badge-gemini-projects' }[src] || 'badge-cursor-builtin';
+}
+
+function setQuery(q) { document.getElementById('queryInput').value = q; doSearch(); }
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+document.getElementById('queryInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+document.getElementById('mcpQueryInput').addEventListener('keydown', e => { if (e.key === 'Enter') doMcpSearch(); });
+
+// ─── Skill Dirs Modal ─────────────────────────────────────────────────────────
+let _skillDirsData = [];
+
+async function openSkillDirsModal() {
+  try {
+    const r = await fetch('/api/skill-dirs');
+    const cfg = await r.json();
+    _skillDirsData = cfg.dirs || [];
+  } catch (e) {
+    _skillDirsData = [];
+  }
+  renderSkillDirRows();
+  const modal = document.getElementById('skill-dirs-modal');
+  modal.style.display = 'flex';
+}
+
+function closeSkillDirsModal() {
+  document.getElementById('skill-dirs-modal').style.display = 'none';
+}
+
+function renderSkillDirRows() {
+  const container = document.getElementById('skill-dirs-list');
+  container.innerHTML = '';
+  _skillDirsData.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 130px auto;gap:6px;align-items:center;';
+    row.innerHTML = `
+      <input type="text" value="${escHtml(d.root)}" placeholder="路径，如 ~/path 或 C:/path"
+        style="background:#111;border:1px solid #333;color:#e0e0e0;border-radius:5px;padding:5px 8px;font-size:12px;font-family:monospace;"
+        onchange="_skillDirsData[${i}].root=this.value" />
+      <input type="text" value="${escHtml(d.label || '')}" placeholder="标签名"
+        style="background:#111;border:1px solid #333;color:#e0e0e0;border-radius:5px;padding:5px 8px;font-size:12px;"
+        onchange="_skillDirsData[${i}].label=this.value" />
+      <button onclick="removeSkillDirRow(${i})" style="background:#2a1a1a;color:#e07070;border:1px solid #3a2a2a;border-radius:5px;padding:4px 9px;font-size:13px;cursor:pointer;">✕</button>
+    `;
+    // skipDirs hint
+    if (d.skipDirs && d.skipDirs.length) {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'grid-column:1/-1;color:#555;font-size:11px;margin-top:-2px;';
+      hint.textContent = `↳ 跳过子目录: ${d.skipDirs.join(', ')}`;
+      row.appendChild(hint);
+    }
+    container.appendChild(row);
+  });
+}
+
+function addSkillDirRow() {
+  _skillDirsData.push({ root: '', label: '' });
+  renderSkillDirRows();
+}
+
+function removeSkillDirRow(i) {
+  _skillDirsData.splice(i, 1);
+  renderSkillDirRows();
+}
+
+async function saveSkillDirs() {
+  const dirs = _skillDirsData
+    .map(d => ({ root: d.root.trim(), label: d.label.trim(), ...(d.skipDirs ? { skipDirs: d.skipDirs } : {}) }))
+    .filter(d => d.root);
+  try {
+    const r = await fetch('/api/skill-dirs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dirs }),
+    });
+    const res = await r.json();
+    if (res.ok) {
+      closeSkillDirsModal();
+      await init();
+      const count = (window.__lastSkills || []).length;
+      alert(`✅ 已保存 ${res.count} 个目录，重新加载了 ${count} 个 Skills`);
+    } else {
+      alert('保存失败: ' + (res.error || '未知错误'));
+    }
+  } catch (e) {
+    alert('保存失败: ' + e.message);
+  }
+}
+
+// ─── MCP Dirs Modal ───────────────────────────────────────────────────────────
+const MCP_DIRS_META = [
+  { key: 'projectRoots',   label: 'projectRoots · Cursor 项目根',    hint: '扫 <root>/<project>/mcps/<server>/',       ph: '~/.cursor/projects' },
+  { key: 'descriptorDirs', label: 'descriptorDirs · 扁平描述符目录', hint: '扫 <dir>/<server>/（tools/ + resources/）', ph: 'D:/my-mcps' },
+  { key: 'configFiles',    label: 'configFiles · mcp.json 配置',     hint: '解析 mcp.json / .mcp.json',                ph: '~/.cursor/mcp.json' },
+  { key: 'scanDirs',       label: 'scanDirs · 递归扫描目录',         hint: '递归查找项目级 mcp.json/.mcp.json',        ph: 'C:/projects' },
+  { key: 'scriptDirs',     label: 'scriptDirs · MCP 脚本目录',       hint: '静态解析 python/node MCP 脚本',            ph: '~/.claude/mcp' },
+  { key: 'pluginRoots',    label: 'pluginRoots · 插件缓存根',        hint: 'Cursor 插件市场 MCP 缓存',                 ph: '~/.cursor/plugins/cache' },
+];
+let _mcpDirsData = {};
+
+async function openMcpDirsModal() {
+  try {
+    const r = await fetch(`${API}/api/mcp-dirs`);
+    _mcpDirsData = await r.json();
+  } catch (e) { _mcpDirsData = {}; }
+  for (const m of MCP_DIRS_META) if (!Array.isArray(_mcpDirsData[m.key])) _mcpDirsData[m.key] = [];
+  renderMcpDirSections();
+  document.getElementById('mcp-dirs-modal').style.display = 'flex';
+}
+
+function closeMcpDirsModal() { document.getElementById('mcp-dirs-modal').style.display = 'none'; }
+
+function renderMcpDirSections() {
+  const container = document.getElementById('mcp-dirs-sections');
+  container.innerHTML = '';
+  for (const m of MCP_DIRS_META) {
+    const arr = _mcpDirsData[m.key] || [];
+    const rows = arr.map((v, i) => `
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin-bottom:6px;">
+        <input type="text" value="${escHtml(v)}" placeholder="${escHtml(m.ph)}"
+          style="background:#111;border:1px solid #333;color:#e0e0e0;border-radius:5px;padding:5px 8px;font-size:12px;font-family:monospace;"
+          onchange="_mcpDirsData['${m.key}'][${i}]=this.value" />
+        <button onclick="removeMcpDirRow('${m.key}',${i})" style="background:#2a1a1a;color:#e07070;border:1px solid #3a2a2a;border-radius:5px;padding:4px 9px;font-size:13px;cursor:pointer;">✕</button>
+      </div>`).join('');
+    const sec = document.createElement('div');
+    sec.style.cssText = 'border:1px solid #262626;border-radius:8px;padding:10px 12px;background:#141414;';
+    sec.innerHTML = `
+      <div style="margin-bottom:8px;">
+        <span style="color:#cfe0ff;font-size:12.5px;font-weight:600;">${escHtml(m.label)}</span>
+        <span style="color:#555;font-size:11px;margin-left:6px;">${escHtml(m.hint)}</span>
+      </div>
+      <div>${rows || '<div style="color:#555;font-size:11px;margin-bottom:6px;">（空 = 关闭此来源）</div>'}</div>
+      <button onclick="addMcpDirRow('${m.key}')" style="background:#16222e;color:#7ec0ff;border:1px dashed #2a4a6a;border-radius:6px;padding:5px 12px;font-size:11.5px;cursor:pointer;">+ 添加</button>
+    `;
+    container.appendChild(sec);
+  }
+}
+
+function addMcpDirRow(key) { (_mcpDirsData[key] = _mcpDirsData[key] || []).push(''); renderMcpDirSections(); }
+function removeMcpDirRow(key, i) { _mcpDirsData[key].splice(i, 1); renderMcpDirSections(); }
+
+async function saveMcpDirs() {
+  const body = {};
+  for (const m of MCP_DIRS_META) body[m.key] = (_mcpDirsData[m.key] || []).map(s => String(s).trim()).filter(Boolean);
+  try {
+    const r = await fetch(`${API}/api/mcp-dirs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const res = await r.json();
+    if (res.ok) {
+      closeMcpDirsModal();
+      if (typeof loadMcpServers === 'function') { try { await loadMcpServers(); } catch (_) {} }
+      const total = Object.values(res.counts).reduce((a, b) => a + b, 0);
+      alert(`✅ 已保存 MCP 扫描目录（共 ${total} 条路径），已重新扫描。`);
+    } else {
+      alert('保存失败: ' + (res.error || '未知错误'));
+    }
+  } catch (e) {
+    alert('保存失败: ' + e.message);
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+init();
+</script>
+</body>
+</html>

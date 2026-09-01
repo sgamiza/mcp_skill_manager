@@ -1,0 +1,26 @@
+node_modules/
+.inspector-configs/
+*.log
+run.txt
+.env
+.env.*
+viz-cache/
+skill-visualizer/.git/
+__pycache__/
+*.pyc
+
+# Local scratch scripts (not part of this product)
+build_dictation.js
+build_docx.py
+build_perlesson.js
+dictation_template.html
+send_feishu.py
+skill-dirs.local.json
+*.local.bak
+
+# Local full notes / version history (not on GitHub)
+README.local.md
+
+# local Chinese notes / version history — not on GitHub
+README.LOCAL.md
+版本记录.md

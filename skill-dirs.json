@@ -1,0 +1,22 @@
+{
+  "_comment": "Skill 扫描目录配置。修改后重启服务器生效。支持 ~ 开头的路径（自动展开为用户主目录）。",
+  "dirs": [
+    {
+      "root": "~/.cursor/skills-cursor",
+      "label": "cursor-builtin"
+    },
+    {
+      "root": "~/.cursor/skills",
+      "label": "cursor-skills"
+    },
+    {
+      "root": "~/.claude/skills",
+      "label": "claude-skills"
+    },
+    {
+      "root": "~/projects",
+      "label": "local-projects",
+      "skipDirs": [".cursor", ".claude"]
+    }
+  ]
+}

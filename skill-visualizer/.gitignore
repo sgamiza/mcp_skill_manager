@@ -1,0 +1,12 @@
+# 生成的报告输出目录
+skill-viz-output/
+
+# 临时数据文件
+skill-data*.json
+
+# 系统与编辑器
+.DS_Store
+__pycache__/
+*.pyc
+.vscode/
+.idea/

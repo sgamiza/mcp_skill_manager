@@ -1,0 +1,23 @@
+{
+  "name": "skill-selector",
+  "version": "1.0.0",
+  "description": "AI Agent Skill 索引与冲突检测工具 — 扫描本地 SKILL.md 文件，提供关键词搜索排序和触发词冲突分析",
+  "main": "server.js",
+  "scripts": {
+    "start": "cross-env SKILL_VIZ_AUTO=0 node server.js",
+    "start:proxy": "cross-env HTTP_PROXY=http://YOUR_PROXY:8080 HTTPS_PROXY=http://YOUR_PROXY:8080 SKILL_VIZ_AUTO=0 node server.js",
+    "dev": "cross-env SKILL_VIZ_AUTO=0 node --watch server.js",
+    "dev:proxy": "cross-env HTTP_PROXY=http://YOUR_PROXY:8080 HTTPS_PROXY=http://YOUR_PROXY:8080 SKILL_VIZ_AUTO=0 node --watch server.js",
+    "start:auto": "cross-env SKILL_VIZ_AUTO=1 node server.js",
+    "dev:proxy:auto": "cross-env HTTP_PROXY=http://YOUR_PROXY:8080 HTTPS_PROXY=http://YOUR_PROXY:8080 SKILL_VIZ_AUTO=1 node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "glob": "^10.3.10",
+    "gray-matter": "^4.0.3"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
+  }
+}
